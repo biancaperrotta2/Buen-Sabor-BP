@@ -17,9 +17,13 @@ public class ArticuloManufacturadoDetalle {
     private Long id_articuloManufacturadoDetalle;
 
     @Column(nullable = false)
-    private Integer cantidad;
+    private Double cantidad;
 
     @ManyToOne()
     @JoinColumn(name = "articulo_insumo_id")
     private ArticuloInsumo articuloInsumo;
+
+    @ManyToOne
+    @JoinColumn(name = "articulo_manufacturado_id", nullable = false)
+    private ArticuloManufacturado articuloManufacturado;
 }

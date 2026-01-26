@@ -19,6 +19,6 @@ import lombok.experimental.SuperBuilder;
 public class ImagenPromocion extends Imagen {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "promocion_id")
+    @JoinColumn(name = "promocion_id", nullable = false)
     private Promocion promocion;
 }

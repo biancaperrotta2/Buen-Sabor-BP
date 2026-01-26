@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Entity
 @Data
 @AllArgsConstructor
@@ -25,4 +27,6 @@ public class Empresa {
     @Column(nullable = false)
     private Integer cuit;
 
+    @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true )
+    private List<Sucursal> listaSucursal;
 }

@@ -18,4 +18,6 @@ public class UnidadMedida {
 
     @Column(nullable = false)
     private String denominacion;
+    
+    private Double factor;
 }

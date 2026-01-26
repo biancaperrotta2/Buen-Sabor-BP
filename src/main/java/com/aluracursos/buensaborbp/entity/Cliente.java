@@ -21,13 +21,18 @@ public class Cliente extends Usuario{
     @Column(nullable = false)
     private Boolean activo = true;
 
-    @Builder.Default
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinTable(
             name = "cliente_domicilio",
-            joinColumns = @JoinColumn (name = "cliente_id"),
-            inverseJoinColumns = @JoinColumn(name = "domicilio_id")
+            joinColumns = @JoinColumn(
+                    name = "cliente_id"
+            ),
+            inverseJoinColumns = @JoinColumn(
+                    name = "domicilio_id"
+            )
     )
+    private List<Domicilio> domicilio;
 
-    private List<Domicilio> domicilios = new ArrayList<>();
+    @OneToMany(mappedBy = "cliente")
+    private List<Pedido> listaPedido;
 }

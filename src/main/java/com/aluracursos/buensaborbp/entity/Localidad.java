@@ -14,12 +14,20 @@ import lombok.NoArgsConstructor;
 public class Localidad {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id_localidad;
+    private Long id;
 
     @Column(nullable = false)
     private String nombre;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ciudad_id")
-    private Ciudad ciudad;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "provincia_id" , referencedColumnName = "id", nullable = false)
+    private Provincia provincia;
+
+    @Override
+    public String toString() {
+        return "Localidad" +
+                "id=" + id +
+                ", nombre='" + nombre + '\'' +
+                ", provincia=" + provincia;
+    }
 }

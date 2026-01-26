@@ -4,6 +4,7 @@ import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoRequest;
 import com.aluracursos.buensaborbp.service.ArticuloInsumoServiceImpl;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,14 +12,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/insumos")
+@RequiredArgsConstructor
 public class ArticuloInsumoController {
 
     private final ArticuloInsumoServiceImpl servicio;
-
-    @Autowired
-    public ArticuloInsumoController(ArticuloInsumoServiceImpl servicio) {
-        this.servicio = servicio;
-    }
 
     //GET - Lista todos los insumos
     @GetMapping("/all")

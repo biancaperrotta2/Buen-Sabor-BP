@@ -5,7 +5,6 @@ import com.aluracursos.buensaborbp.entity.Enums.FormaPago;
 import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -18,47 +17,44 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class Pedido {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id_pedido;
+    private Long id;
 
-    @Column(nullable = false)
-    private LocalTime horaEstimadaFinalzación;
+    private LocalTime horaEstimadaFinalizacion;
 
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Estado estadoPedido;
 
-    @Column(nullable = false)
-    private BigDecimal subTotal;
-
-    @Column(nullable = false)
-    private BigDecimal descuento;
-
-    @Column(nullable = false)
-    private BigDecimal total;
-
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Estado estadoPago;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private TipoEnvio tipoEnvio;
 
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private FormaPago formaPago;
 
     @Column(nullable = false)
     private LocalDate fechaPedido;
 
-    @Column(nullable = false)
+    private BigDecimal costoTotal;
+
+    private BigDecimal total;
+
+    private BigDecimal gastosEnvio;
+
     private String aclaracionDomicilio;
 
-    @Column(nullable = false)
-    @Builder.Default
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "pedido_id")
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetallePedido> detallePedidos = new ArrayList<>();
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "factura_id")
     private Factura factura;
 
@@ -67,11 +63,66 @@ public class Pedido {
     private Sucursal sucursal;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "domicilio_id" )
+    @JoinColumn(name = "domicilio_id")
     private Domicilio domicilio;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
+    // Guarda el domicilio textual del momento del pedido
+    private String domicilioSnapshot;
+
+    // === MÉTODOS ===
+    public void calcularTotal() {
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (DetallePedido detalle : detallePedidos) {
+            total = total.add(detalle.getSubtotal());
+        }
+
+        if (tipoEnvio == TipoEnvio.DELIVERY && gastosEnvio != null) {
+            total = total.add(gastosEnvio);
+        }
+
+        this.total = total;
+    }
+
+    public void calcularCostoTotal() {
+        BigDecimal costo = BigDecimal.ZERO;
+
+        for (DetallePedido detalle : detallePedidos) {
+            Articulo articulo = detalle.getArticulo();
+            BigDecimal costoUnitario = articulo.getPrecioCosto();
+
+            if (costoUnitario == null) {
+                throw new RuntimeException("El artículo " + articulo.getNombre() + " no tiene precio de costo definido.");
+            }
+
+            costo = costo.add(costoUnitario.multiply(BigDecimal.valueOf(detalle.getCantidad())));
+        }
+
+        this.costoTotal = costo;
+    }
+
+    public void reservarStock() {
+        for (DetallePedido detalle : detallePedidos) {
+            Articulo articulo = detalle.getArticulo();
+            articulo.reservarStock(detalle.getCantidad(), articulo.getNombre());
+        }
+    }
+
+    public void confirmarStock() {
+        for (DetallePedido detalle : detallePedidos) {
+            Articulo articulo = detalle.getArticulo();
+            articulo.confirmarStock(detalle.getCantidad());
+        }
+    }
+
+    public void liberarStock() {
+        for (DetallePedido detalle : detallePedidos) {
+            Articulo articulo = detalle.getArticulo();
+            articulo.liberarStock(detalle.getCantidad());
+        }
+    }
 }

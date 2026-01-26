@@ -34,4 +34,8 @@ public class Sucursal {
     @Builder.Default
     @Column(nullable = false)
     private Boolean activo = true;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "domicilio_id", referencedColumnName = "id")
+    private Domicilio domicilio;
 }

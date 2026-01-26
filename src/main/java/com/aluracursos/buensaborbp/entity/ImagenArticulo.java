@@ -16,7 +16,7 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 public class ImagenArticulo extends Imagen{
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "articulo_id")
+    @JoinColumn(name = "articulo_id", nullable = false)
     @JsonBackReference
     private Articulo articulo;
 

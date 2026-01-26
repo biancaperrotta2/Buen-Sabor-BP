@@ -6,28 +6,26 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Entity
+import java.util.List;
+
+@NoArgsConstructor
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
 @Builder
-public class Provincia {
+@Entity(name = "pais")
+public class Pais {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String nombre;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "pais_id", nullable = false)
-    private Pais pais;
+    @OneToMany(mappedBy = "pais", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Provincia> provincia;
 
     @Override
     public String toString() {
-        return "Provincia" +
+        return "Pais" +
                 "id=" + id +
-                ", nombre='" + nombre + '\'' +
-                ", pais=" + pais;
+                ", nombre='" + nombre;
     }
 }

@@ -10,7 +10,7 @@ import java.util.List;
 public interface ArticuloInsumoService {
     List<ArticuloInsumoBaseResponse> getAll();
     ArticuloInsumoFullResponse getById(Long id);
-    ArticuloInsumoFullResponse create(ArticuloInsumoRequest request);
+    ArticuloInsumoFullResponse crearArticuloInsumo(ArticuloInsumoRequest request);
     ArticuloInsumoFullResponse update(Long id, ArticuloInsumoRequest request);
     void delete(Long id);
 

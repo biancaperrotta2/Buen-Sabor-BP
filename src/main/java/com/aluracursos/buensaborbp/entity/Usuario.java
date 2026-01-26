@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -41,7 +43,9 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     private Rol rol;
 
-    @OneToOne
-    @JoinColumn(name="imagenUsuario_id")
-    private ImagenUsuario imagenUsuario;
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ImagenUsuario> imagenes = new ArrayList<>();
+
+    // Para autenticación OAuth2
+    private String oauth2Id;
 }

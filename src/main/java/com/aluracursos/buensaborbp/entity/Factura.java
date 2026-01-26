@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,12 +21,12 @@ import java.util.List;
 public class Factura {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id_factura;
+    private Long id;
 
     @Column(nullable = false)
     private LocalDate fechaFacturacion;
 
-    @Embedded
+    @OneToOne(cascade = CascadeType.ALL)
     private DetalleMercadoPago detalleMercadoPago;
 
     @Column(nullable = false)
@@ -37,9 +38,16 @@ public class Factura {
     private FormaPago formaPago;
 
     @Column(nullable = false)
-    private Double totalVenta;
+    private BigDecimal totalVenta;
+
+    @Column(unique = true, nullable = false)
+    private Long numeroComprobante;
+
+    @OneToOne
+    @JoinColumn(name = "pedido_id")
+    private Pedido pedido;
 
     @Builder.Default
     @OneToMany(mappedBy = "factura", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DetalleFactura> detalleFactura = new ArrayList<>();
+    private List<DetalleFactura> detallesFactura = new ArrayList<>();
 }

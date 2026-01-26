@@ -31,8 +31,12 @@ public class DetallePedido {
     @JoinColumn(name = "articulo_id")
     private Articulo articulo;
 
-    // Si quiero que un detalle apunte a una Promocion en vez de un Articulo:
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "promocion_id")
-    private Promocion promocion;
+    //Metodos
+    public void calcularSubtotal() {
+        if (articulo != null && articulo.getPrecioVenta() != null) {
+            this.subtotal = articulo.getPrecioVenta().multiply(BigDecimal.valueOf(cantidad));
+        } else {
+            this.subtotal = BigDecimal.ZERO;
+        }
+    }
 }

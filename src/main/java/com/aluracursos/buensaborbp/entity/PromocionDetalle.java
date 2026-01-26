@@ -5,34 +5,24 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.math.BigDecimal;
 
-@Entity
+@NoArgsConstructor
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
 @Builder
-public class DetalleFactura {
+@Entity(name = "promocion_detalle")
+public class PromocionDetalle {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id_promocion;
 
-    @Column(nullable = false)
     private Integer cantidad;
 
-    @Column(nullable = false)
-    private BigDecimal subTotal;
+    @ManyToOne
+    @JoinColumn(name = "articulo_id")
+    private Articulo articulos;
 
     @ManyToOne
-    @JoinColumn(name = "factura_id")
-    private Factura factura;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "articulo_id")
-    private Articulo articulo;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promocion_id")
-    private Promocion promocion;
-
+    private Promocion articuloPromocion;
 }
