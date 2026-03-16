@@ -17,7 +17,7 @@ public class ArticuloInsumoFullResponse {
     private Double stockActual;
     private Double stockMaximo;
     private Boolean esParaElaborar;
-    private Boolean stockMinimo;
+    private Double stockMinimo;
     private Boolean activo;
     private CategoriaFullResponse categoria;
     private UnidadMedidaResponse unidadMedida;

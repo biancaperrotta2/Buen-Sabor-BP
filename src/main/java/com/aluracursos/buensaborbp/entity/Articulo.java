@@ -12,8 +12,6 @@ import java.util.List;
 
 @Entity
 @Data
-@Getter 
-@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
@@ -44,16 +42,16 @@ public abstract class Articulo {
     @JsonManagedReference
     private List<ImagenArticulo> imagenes = new ArrayList<>();
 
-    @ManyToOne()
+    @ManyToOne(fetch = FetchType.LAZY)
     @Enumerated(EnumType.STRING)
     @JoinColumn(name = "unidad_medidaEnum_id")
-     UnidadMedidaEnum unidadMedidaEnum;
+    private UnidadMedidaEnum unidadMedidaEnum;
     
-    @ManyToOne()
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unidad_medida_id")
     private UnidadMedida unidadMedida;
 
-    @ManyToOne()
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id")
     private Categoria categoria;
 
@@ -67,112 +65,6 @@ public abstract class Articulo {
     private List<Promocion> promociones = new ArrayList<>();
 
     private Float margen;
-    
-    
-    public Long getId(){
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public BigDecimal getPrecioVenta() {
-        return precioVenta;
-    }
-
-    public void setPrecioVenta(BigDecimal precioVenta) {
-        this.precioVenta = precioVenta;
-    }
-
-    public BigDecimal getPrecioCosto() {
-        return precioCosto;
-    }
-
-    public void setPrecioCosto(BigDecimal precioCosto) {
-        this.precioCosto = precioCosto;
-    }
-
-    public Boolean getActivo() {
-        return activo;
-    }
-
-    public void setActivo(Boolean activo) {
-        this.activo = activo;
-    }
-
-    public Boolean getEsVendible() {
-        return esVendible;
-    }
-
-    public void setEsVendible(Boolean esVendible) {
-        this.esVendible = esVendible;
-    }
-
-    public Integer getTiempoEstimadoMinutos() {
-        return tiempoEstimadoMinutos;
-    }
-
-    public void setTiempoEstimadoMinutos(Integer tiempoEstimadoMinutos) {
-        this.tiempoEstimadoMinutos = tiempoEstimadoMinutos;
-    }
-
-    public List<ImagenArticulo> getImagenes() {
-        return imagenes;
-    }
-
-    public void setImagenes(List<ImagenArticulo> imagenes) {
-        this.imagenes = imagenes;
-    }
-
-    public UnidadMedidaEnum getUnidadMedidaEnum() {
-        return unidadMedidaEnum;
-    }
-
-    public void setUnidadMedidaEnum(UnidadMedidaEnum unidadMedidaEnum) {
-        this.unidadMedidaEnum = unidadMedidaEnum;
-    }
-
-    public UnidadMedida getUnidadMedida() {
-        return unidadMedida;
-    }
-
-    public void setUnidadMedida(UnidadMedida unidadMedida) {
-        this.unidadMedida = unidadMedida;
-    }
-
-    public Categoria getCategoria() {
-        return categoria;
-    }
-
-    public void setCategoria(Categoria categoria) {
-        this.categoria = categoria;
-    }
-
-    public List<Promocion> getPromociones() {
-        return promociones;
-    }
-
-    public void setPromociones(List<Promocion> promociones) {
-        this.promociones = promociones;
-    }
-
-    public Float getMargen() {
-        return margen;
-    }
-
-    //get y set
-    public void setMargen(Float margen) {    
-        this.margen = margen;
-    }
 
     public void activar() {
         this.activo = true;

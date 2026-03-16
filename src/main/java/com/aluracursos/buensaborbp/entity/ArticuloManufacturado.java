@@ -27,23 +27,46 @@ public class ArticuloManufacturado extends Articulo{
     private List<ArticuloManufacturadoDetalle> articuloManufacturadoDetalles = new ArrayList<>();
 
     public void tiempoEstimadoMinutos(int tiempoBase) {
-        Double tiempoDetalle = 0.0;
-
-        for(ArticuloManufacturadoDetalle detalle : articuloManufacturadoDetalles){
-            tiempoDetalle += detalle.getArticuloInsumo().getTiempoEstimadoMinutos();
+        if (articuloManufacturadoDetalles == null || articuloManufacturadoDetalles.isEmpty()) {
+            setTiempoEstimadoMinutos(tiempoBase);
+            return;
         }
 
-        setTiempoEstimadoMinutos(tiempoBase + tiempoDetalle.intValue());
+        int tiempoDetalle = 0;
+
+        for (ArticuloManufacturadoDetalle detalle : articuloManufacturadoDetalles) {
+            if (detalle != null && detalle.getArticuloInsumo() != null) {
+                Integer tiempoInsumo = detalle.getArticuloInsumo().getTiempoEstimadoMinutos();
+                if (tiempoInsumo != null) {
+                    tiempoDetalle += tiempoInsumo;
+                }
+            }
+        }
+
+        setTiempoEstimadoMinutos(tiempoBase + tiempoDetalle);
     }
 
     public void calcularPrecioCosto(){
+        if (articuloManufacturadoDetalles == null || articuloManufacturadoDetalles.isEmpty()) {
+            setPrecioCosto(BigDecimal.ZERO);
+            return;
+        }
+
         BigDecimal costoTotal = BigDecimal.ZERO;
         for (ArticuloManufacturadoDetalle detalle : articuloManufacturadoDetalles) {
+            if (detalle == null || detalle.getArticuloInsumo() == null) {
+                continue;
+            }
+            
             ArticuloInsumo insumo = detalle.getArticuloInsumo();
-            insumo.getPrecioCosto();
+            BigDecimal precioCostoUnitario = insumo.getPrecioCosto();
+            
+            if (precioCostoUnitario == null) {
+                throw new IllegalStateException("El insumo " + insumo.getNombre() + " no tiene precio de costo definido.");
+            }
+            
             BigDecimal cantidadBase = BigDecimal.valueOf(insumo.convertirACantidadBase(detalle.getCantidad()));
-            BigDecimal precioUnitario = insumo.getPrecioVenta();
-            BigDecimal precioPorCantidad = precioUnitario.multiply(cantidadBase);
+            BigDecimal precioPorCantidad = precioCostoUnitario.multiply(cantidadBase);
 
             costoTotal = costoTotal.add(precioPorCantidad);
         }
@@ -96,7 +119,7 @@ public class ArticuloManufacturado extends Articulo{
 
         // Información de categoría sin recursión
         sb.append(",\n  categoria=");
-        if (getCategoria().getId != null) {
+        if (getCategoria() != null && getCategoria().getId() != null) {
             sb.append(getCategoria().getId());
         } else {
             sb.append("null");

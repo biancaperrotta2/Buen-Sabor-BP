@@ -1,11 +1,19 @@
 package com.aluracursos.buensaborbp.entity;
 
-import com.aluracursos.buensaborbp.entity.Enums.UnidadMedidaEnum;
-import com.aluracursos.buensaborbp.exception.StockInsuficienteException;
-import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
+import com.aluracursos.buensaborbp.exception.StockInsuficienteException;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Data
@@ -33,10 +41,10 @@ public class ArticuloInsumo extends Articulo{
 
     public void reservarStock(double cantidad, String articuloNombre){
         double cantidadBase = convertirACantidadBase(cantidad);
-        if(getStockDisponible() > cantidadBase){
+        if(getStockDisponible() >= cantidadBase){
             this.stockReservado += cantidadBase;
-        }else {
-            throw new StockInsuficienteException("No contamos con stock suficiente del insumo " + this.getNombre() + " requerido por el articulo " + articuloNombre + ". Favor de disminuir la cantidad o esperar reposición. Gracias");
+        } else {
+            throw new StockInsuficienteException("No contamos con stock suficiente del insumo " + this.getNombre() + " requerido por el artículo " + articuloNombre + ". Favor de disminuir la cantidad o esperar reposición. Gracias");
         }
     }
 
@@ -72,7 +80,10 @@ public class ArticuloInsumo extends Articulo{
     }
 
     public double convertirACantidadBase(double cantidad) {
-        return cantidad * unidadMedidaEnum.getFactor();
+        if (getUnidadMedidaEnum() == null) {
+            throw new IllegalStateException("La unidad de medida no está definida para el insumo: " + this.getNombre());
+        }
+        return cantidad * getUnidadMedidaEnum().getFactor();
     }
 
 

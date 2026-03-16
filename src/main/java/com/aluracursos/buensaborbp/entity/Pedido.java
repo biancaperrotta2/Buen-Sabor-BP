@@ -77,8 +77,12 @@ public class Pedido {
     public void calcularTotal() {
         BigDecimal total = BigDecimal.ZERO;
 
-        for (DetallePedido detalle : detallePedidos) {
-            total = total.add(detalle.getSubtotal());
+        if (detallePedidos != null && !detallePedidos.isEmpty()) {
+            for (DetallePedido detalle : detallePedidos) {
+                if (detalle != null && detalle.getSubtotal() != null) {
+                    total = total.add(detalle.getSubtotal());
+                }
+            }
         }
 
         if (tipoEnvio == TipoEnvio.DELIVERY && gastosEnvio != null) {
@@ -89,14 +93,23 @@ public class Pedido {
     }
 
     public void calcularCostoTotal() {
+        if (detallePedidos == null || detallePedidos.isEmpty()) {
+            this.costoTotal = BigDecimal.ZERO;
+            return;
+        }
+
         BigDecimal costo = BigDecimal.ZERO;
 
         for (DetallePedido detalle : detallePedidos) {
+            if (detalle == null || detalle.getArticulo() == null) {
+                continue;
+            }
+            
             Articulo articulo = detalle.getArticulo();
             BigDecimal costoUnitario = articulo.getPrecioCosto();
 
             if (costoUnitario == null) {
-                throw new RuntimeException("El artículo " + articulo.getNombre() + " no tiene precio de costo definido.");
+                throw new IllegalStateException("El artículo " + articulo.getNombre() + " no tiene precio de costo definido.");
             }
 
             costo = costo.add(costoUnitario.multiply(BigDecimal.valueOf(detalle.getCantidad())));
@@ -106,21 +119,45 @@ public class Pedido {
     }
 
     public void reservarStock() {
+        if (detallePedidos == null || detallePedidos.isEmpty()) {
+            return;
+        }
+
         for (DetallePedido detalle : detallePedidos) {
+            if (detalle == null || detalle.getArticulo() == null) {
+                continue;
+            }
+            
             Articulo articulo = detalle.getArticulo();
             articulo.reservarStock(detalle.getCantidad(), articulo.getNombre());
         }
     }
 
     public void confirmarStock() {
+        if (detallePedidos == null || detallePedidos.isEmpty()) {
+            return;
+        }
+
         for (DetallePedido detalle : detallePedidos) {
+            if (detalle == null || detalle.getArticulo() == null) {
+                continue;
+            }
+            
             Articulo articulo = detalle.getArticulo();
             articulo.confirmarStock(detalle.getCantidad());
         }
     }
 
     public void liberarStock() {
+        if (detallePedidos == null || detallePedidos.isEmpty()) {
+            return;
+        }
+
         for (DetallePedido detalle : detallePedidos) {
+            if (detalle == null || detalle.getArticulo() == null) {
+                continue;
+            }
+            
             Articulo articulo = detalle.getArticulo();
             articulo.liberarStock(detalle.getCantidad());
         }
