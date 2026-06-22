@@ -1,15 +1,13 @@
 package com.aluracursos.buensaborbp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.aluracursos.buensaborbp.entity.Enums.Rol;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class EmpleadoFullResponse {
-    private String nombreApellido;
-    private String email;
-    private String telefono;
-    private ImagenUsuarioResponse imagenEmpleado;
-}
+public record EmpleadoFullResponse(
+    Long id,
+    String nombre,
+    String apellido,
+    String email,
+    String telefono,
+    Rol rol,
+    ImagenUsuarioResponse fotoPerfilEmpleado
+) { }

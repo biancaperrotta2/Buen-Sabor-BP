@@ -1,7 +1,15 @@
 package com.aluracursos.buensaborbp.repository;
 
 import com.aluracursos.buensaborbp.entity.Factura;
-import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.time.LocalDate;
 
-public interface FacturaRepository extends JpaRepository<Factura,Long> {
+@Repository
+public interface FacturaRepository extends BaseRepository<Factura, Long> {
+    Optional<Factura> findByPedidoId(Long pedidoId);
+    boolean existsByPedidoId(Long pedidoId);
+    List<Factura> findByFechaFacturacionBetween(LocalDate inicio, LocalDate fin);
 }
+

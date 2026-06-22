@@ -1,17 +1,14 @@
 package com.aluracursos.buensaborbp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.time.LocalTime;
+import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
+import com.aluracursos.buensaborbp.entity.Enums.Estado;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class PedidoCocinaResponse {
-    private Long idPedido;               // número de orden
-    private String clienteNombre;  // nombre y apellido
-    private String tiempoEstimado;
-    private String tipoEntrega;
-    private String estado;         // "pendiente", "en proceso", "disponible"
-}
+public record PedidoCocinaResponse(
+    Long id,              
+    ClienteBaseResponse cliente,       
+    LocalTime horaEstimadaFinalizacion,
+    TipoEnvio tipoEnvio,
+    Estado estadoPedido              
+) {}
 

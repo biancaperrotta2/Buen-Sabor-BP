@@ -1,13 +1,12 @@
 package com.aluracursos.buensaborbp.entity;
 
-import com.aluracursos.buensaborbp.entity.Enums.Estado;
+import com.aluracursos.buensaborbp.entity.Enums.EstadoPago;
 import com.aluracursos.buensaborbp.entity.Enums.FormaPago;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -31,7 +30,7 @@ public class Factura {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private Estado estadoPago;
+    private EstadoPago estadoPago;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

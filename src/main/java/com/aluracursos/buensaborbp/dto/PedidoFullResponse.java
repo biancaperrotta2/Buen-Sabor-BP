@@ -1,25 +1,29 @@
 package com.aluracursos.buensaborbp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import com.aluracursos.buensaborbp.entity.Enums.Estado;
+import com.aluracursos.buensaborbp.entity.Enums.EstadoPago;
+import com.aluracursos.buensaborbp.entity.Enums.FormaPago;
+import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class PedidoFullResponse {
-    private Long id;
-    private String estado;
-    private LocalDateTime fechaHora;
-    private String tipoEntrega;
-    private String aclaracion;
-    private String metodoPago;
-    private Double subtotal;
-    private Double costoEnvio;
-    private Double descuento;
-    private Double total;
-    private List<DetallePedidoFullResponse> detalles;
-}
+public record PedidoFullResponse(
+    Long id,
+    Estado estadoPedido,
+    EstadoPago estadoPago,
+    LocalDate fechaPedido,
+    TipoEnvio tipoEnvio,
+    String domicilioSnapshot,
+    String aclaracionDomicilio,
+    LocalTime horaEstimadaFinalizacion,
+    FormaPago formaPago,
+    BigDecimal costoTotal,
+    BigDecimal gastosEnvio,
+    Double descuento,
+    BigDecimal total,
+    ClienteBaseResponse cliente, 
+    List<DetallePedidoFullResponse> detallePedidos
+) {}
+

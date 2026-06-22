@@ -1,17 +1,14 @@
 package com.aluracursos.buensaborbp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.util.List;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class PedidoRequest {
-    private String tipoEntrega;
-    private String metodoPago;
-    private String aclaracion;
-    private List<DetallePedidoRequest> detalles;
-}
+import com.aluracursos.buensaborbp.entity.Enums.FormaPago;
+import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
+
+public record PedidoRequest(
+    TipoEnvio tipoEnvio,
+    FormaPago formaPago,
+    Long idDomicilio,
+    String aclaracionDomicilio,
+    List<DetallePedidoRequest> detallePedidos
+) { }

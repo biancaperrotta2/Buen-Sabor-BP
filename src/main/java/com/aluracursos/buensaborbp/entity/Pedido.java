@@ -1,6 +1,7 @@
 package com.aluracursos.buensaborbp.entity;
 
 import com.aluracursos.buensaborbp.entity.Enums.Estado;
+import com.aluracursos.buensaborbp.entity.Enums.EstadoPago;
 import com.aluracursos.buensaborbp.entity.Enums.FormaPago;
 import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 import jakarta.persistence.*;
@@ -17,7 +18,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class Pedido {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,11 +26,11 @@ public class Pedido {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Estado estadoPedido;
+    private Estado estado;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Estado estadoPago;
+    private EstadoPago estadoPago;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -63,7 +63,7 @@ public class Pedido {
     private Sucursal sucursal;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "domicilio_id")
+    @JoinColumn(name = "id_domicilio")
     private Domicilio domicilio;
 
     @ManyToOne(fetch = FetchType.LAZY)

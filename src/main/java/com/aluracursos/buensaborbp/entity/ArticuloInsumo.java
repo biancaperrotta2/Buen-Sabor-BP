@@ -1,13 +1,12 @@
 package com.aluracursos.buensaborbp.entity;
 
 import java.math.BigDecimal;
-
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-
 import com.aluracursos.buensaborbp.exception.StockInsuficienteException;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,12 +32,13 @@ public class ArticuloInsumo extends Articulo{
     private Double stockMinimo;
 
     @Builder.Default
-    private Double stockReservado = 0.0; //Se pone en 0 para todos los nuevos insumos
+    private Double stockReservado = 0.0; //stock apartado para pedidos aun no confirmados/pagados
 
     public Double getStockDisponible(){
         return stockActual - stockReservado;
     }
 
+    //stock reservado cuando el cliente aun no paga el pedido, en el proceso de seleccion de productos se va reservando el stock segun lo q desee. Si hay stock disponible se RESERVA sino lanzamos ERROR.
     public void reservarStock(double cantidad, String articuloNombre){
         double cantidadBase = convertirACantidadBase(cantidad);
         if(getStockDisponible() >= cantidadBase){
@@ -48,11 +48,13 @@ public class ArticuloInsumo extends Articulo{
         }
     }
 
+    //si el pedido se cancela, anulamos el stock de articulos reservados, restamos: stock reservado - cantidad reservada 
     public void liberarStock(double cantidad) {
         double cantidadBase = convertirACantidadBase(cantidad);
         this.stockReservado = Math.max(0, this.stockReservado - cantidadBase);
     }
 
+    //si el pedido se concreta, hacemos efectivo el descuento de stock: stock actual - cantidad y reiniciamos el stock reservado dejandolo libre.
     public void confirmarStock(double cantidad) {
         double cantidadBase = convertirACantidadBase(cantidad);
         if (this.stockReservado < cantidadBase) {
@@ -86,5 +88,26 @@ public class ArticuloInsumo extends Articulo{
         return cantidad * getUnidadMedidaEnum().getFactor();
     }
 
+/**
+ * Devuelve true si este insumo tiene stock igual o por debajo del stock mínimo.
+ */
+public boolean tieneStockMinimo() {
+    return this.stockActual <= this.stockMinimo;
+}
+
+/**
+ * Dada una lista de insumos, devuelve solo aquellos que están en stock mínimo o por debajo.
+ */
+public static List<ArticuloInsumo> obtenerInsumosConStockMinimo(List<ArticuloInsumo> insumos) {
+    List<ArticuloInsumo> insumosConStockMinimo = new ArrayList<>();
+    if (insumos != null) {
+        for (ArticuloInsumo insumo : insumos) {
+            if (insumo != null && insumo.tieneStockMinimo()) {
+                insumosConStockMinimo.add(insumo);
+            }
+        }
+    }
+    return insumosConStockMinimo;
+}
 
 }

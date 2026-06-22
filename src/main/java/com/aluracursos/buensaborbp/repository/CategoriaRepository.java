@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface CategoriaRepository extends JpaRepository<Categoria,Long> {
     List<Categoria> findByCategoriaPadreId(Long categoriaPadreId);
     Optional<Categoria> findByDenominacion (String denominacion);
+    List<Categoria> findByCategoriaPadreIsNullAndActivoTrue();
 }

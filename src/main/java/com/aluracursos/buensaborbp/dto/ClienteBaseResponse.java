@@ -1,18 +1,14 @@
 package com.aluracursos.buensaborbp.dto;
 
+import com.aluracursos.buensaborbp.dto.ImagenUsuarioResponse;
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class ClienteBaseResponse {
-    private Long id;
-    private String nombreApellido;
-    private ImagenUsuarioResponse fotoPerfilCliente;
-    private String email;
-    private String telefono;
-    private List<DomicilioBaseResponse> domicilio;
-}
+public record ClienteBaseResponse(
+    Long id,
+    String nombre,
+    String apellido,
+    ImagenUsuarioResponse fotoPerfilCliente,
+    String email,
+    String telefono,
+    List<PedidoBaseResponse> pedidos
+) {}

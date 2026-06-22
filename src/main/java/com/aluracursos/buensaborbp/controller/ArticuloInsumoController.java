@@ -11,12 +11,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoRequest;
 import com.aluracursos.buensaborbp.service.ArticuloInsumoServiceImpl;
-
 import lombok.RequiredArgsConstructor;
 
 @RestController

@@ -1,19 +1,16 @@
 package com.aluracursos.buensaborbp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import com.aluracursos.buensaborbp.entity.Enums.Estado;
+import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class PedidoBaseResponse {
-    private Long id;
-    private String estado;
-    private LocalDateTime fechaHora;
-    private String tipoEntrega;
-    private List<DetallePedidoFullResponse> detalles;
-}
+public record PedidoBaseResponse(
+    Long id,
+    Estado estadoPedido,
+    LocalTime horaEstimadaFinalizacion,
+    LocalDate fechaPedido,
+    TipoEnvio tipoEnvio,
+    List<DetallePedidoFullResponse> detalles
+) {}

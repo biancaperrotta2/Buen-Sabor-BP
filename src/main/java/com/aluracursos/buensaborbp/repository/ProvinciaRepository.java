@@ -1,7 +1,8 @@
 package com.aluracursos.buensaborbp.repository;
 
 import com.aluracursos.buensaborbp.entity.Provincia;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-public interface ProvinciaRepository extends JpaRepository<Provincia, Long> {
+@Repository
+public interface ProvinciaRepository extends BaseRepository<Provincia, Long> {
 }

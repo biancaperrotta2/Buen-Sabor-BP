@@ -1,15 +1,12 @@
 package com.aluracursos.buensaborbp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.time.LocalDate;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class ClienteRequest {
-    private String nombreApellido;
-    private String telefono;
-    private String email;
-    private ImagenUsuarioRequest fotoPerfilCliente;
-}
+public record ClienteRequest(
+    String nombre,
+    String apellido,
+    String telefono,
+    String email,
+    String password,
+    LocalDate fechaNacimiento
+) {}

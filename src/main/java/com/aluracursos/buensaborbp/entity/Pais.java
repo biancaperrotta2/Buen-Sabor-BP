@@ -22,10 +22,4 @@ public class Pais {
     @OneToMany(mappedBy = "pais", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Provincia> provincia;
 
-    @Override
-    public String toString() {
-        return "Pais" +
-                "id=" + id +
-                ", nombre='" + nombre;
-    }
 }

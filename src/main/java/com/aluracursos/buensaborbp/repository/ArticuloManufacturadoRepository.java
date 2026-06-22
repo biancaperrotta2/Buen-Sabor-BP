@@ -1,7 +1,12 @@
 package com.aluracursos.buensaborbp.repository;
 
 import com.aluracursos.buensaborbp.entity.ArticuloManufacturado;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ArticuloManufacturadoRepository extends JpaRepository <ArticuloManufacturado, Long> {
+
+    Page<ArticuloManufacturado> findAllByActivoTrue(PageRequest of);
 }

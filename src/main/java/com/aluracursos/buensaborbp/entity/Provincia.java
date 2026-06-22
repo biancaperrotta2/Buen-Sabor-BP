@@ -1,5 +1,6 @@
 package com.aluracursos.buensaborbp.entity;
 
+import java.util.List;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,15 +20,8 @@ public class Provincia {
     @Column(nullable = false)
     private String nombre;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "pais_id", nullable = false)
-    private Pais pais;
+    @OneToMany(mappedBy = "provincia", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Ciudad> ciudades;
 
-    @Override
-    public String toString() {
-        return "Provincia" +
-                "id=" + id +
-                ", nombre='" + nombre + '\'' +
-                ", pais=" + pais;
-    }
+
 }

@@ -1,5 +1,10 @@
 package com.aluracursos.buensaborbp.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoRequest;
@@ -8,17 +13,7 @@ import com.aluracursos.buensaborbp.entity.Categoria;
 import com.aluracursos.buensaborbp.mapper.ArticuloInsumoMapper;
 import com.aluracursos.buensaborbp.repository.ArticuloInsumoRepository;
 import com.aluracursos.buensaborbp.repository.CategoriaRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-/**
- * Servicio para la gestión de artículos insumo.
- * Proporciona operaciones CRUD y lógica de negocio relacionada con insumos.
- */
 @Service
 @Transactional
 public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, Long> implements ArticuloInsumoService {
@@ -37,11 +32,37 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
         this.categoriaRepository = categoriaRepository;
     }
 
-    /**
-     * Obtiene todos los artículos insumo.
-     * 
-     * @return Lista de respuestas base de artículos insumo
-     */
+    // --- MÉTODOS DE STOCK (Los puentes a tu Entidad) ---
+
+    @Override
+    public void reservarStock(Long id, double cantidad, String articuloNombre) {
+        ArticuloInsumo insumo = articuloInsumoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
+        
+        insumo.reservarStock(cantidad, articuloNombre); // Llama a tu método en la entidad
+        articuloInsumoRepository.save(insumo); // Persiste el cambio en la DB
+    }
+
+    @Override
+    public void liberarStock(Long id, double cantidad) {
+        ArticuloInsumo insumo = articuloInsumoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
+        
+        insumo.liberarStock(cantidad);
+        articuloInsumoRepository.save(insumo);
+    }
+
+    @Override
+    public void confirmarVenta(Long id, double cantidad) {
+        ArticuloInsumo insumo = articuloInsumoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
+        
+        insumo.confirmarStock(cantidad);
+        articuloInsumoRepository.save(insumo);
+    }
+
+    // --- MÉTODOS CRUD ESTÁNDAR ---
+
     @Override
     public List<ArticuloInsumoBaseResponse> getAll() {
         return articuloInsumoRepository.findAll()
@@ -50,13 +71,6 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Busca y devuelve un insumo por su ID.
-     * 
-     * @param id ID del insumo a buscar
-     * @return Respuesta completa del insumo
-     * @throws EntityNotFoundException si no se encuentra el insumo
-     */
     @Override
     public ArticuloInsumoFullResponse getById(Long id) {
         ArticuloInsumo entity = articuloInsumoRepository.findById(id)
@@ -64,77 +78,50 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
         return articuloInsumoMapper.toFullResponse(entity);
     }
 
-    /**
-     * Crea un nuevo artículo insumo.
-     * 
-     * @param request Datos del insumo a crear
-     * @return Respuesta completa del insumo creado
-     * @throws EntityNotFoundException si no se encuentra la categoría
-     */
     @Override
     public ArticuloInsumoFullResponse crearArticuloInsumo(ArticuloInsumoRequest request) {
-        // Validar que la categoría existe
         if (request.getCategoria() == null || request.getCategoria().getIdCategoriaPadre() == null) {
             throw new IllegalArgumentException("La categoría es obligatoria");
         }
         
         Categoria categoria = categoriaRepository.findById(request.getCategoria().getIdCategoriaPadre())
-                .orElseThrow(() -> new EntityNotFoundException("No se encontró la categoría con ID: " + request.getCategoria().getIdCategoriaPadre()));
+                .orElseThrow(() -> new EntityNotFoundException("Categoría no encontrada"));
         
-        // Mapear el request a entidad
         ArticuloInsumo insumo = articuloInsumoMapper.toEntity(request);
         insumo.setCategoria(categoria);
         
-        // Calcular precio de venta si se proporciona margen
         if (request.getPrecioVenta() != null) {
             insumo.calcularPrecioVenta(request.getPrecioVenta());
         }
         
-        // Guardar el insumo
-        ArticuloInsumo saved = articuloInsumoRepository.save(insumo);
-        
-        return articuloInsumoMapper.toFullResponse(saved);
+        return articuloInsumoMapper.toFullResponse(articuloInsumoRepository.save(insumo));
     }
 
-    /**
-     * Actualiza un artículo insumo existente.
-     * 
-     * @param id ID del insumo a actualizar
-     * @param request Datos actualizados del insumo
-     * @return Respuesta completa del insumo actualizado
-     * @throws EntityNotFoundException si no se encuentra el insumo o la categoría
-     */
     @Override
     public ArticuloInsumoFullResponse update(Long id, ArticuloInsumoRequest request) {
         ArticuloInsumo existing = articuloInsumoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
         
-        // Actualizar categoría si se proporciona
         if (request.getCategoria() != null && request.getCategoria().getIdCategoriaPadre() != null) {
             Categoria categoria = categoriaRepository.findById(request.getCategoria().getIdCategoriaPadre())
-                    .orElseThrow(() -> new EntityNotFoundException("No se encontró la categoría con ID: " + request.getCategoria().getIdCategoriaPadre()));
+                    .orElseThrow(() -> new EntityNotFoundException("Categoría no encontrada"));
             existing.setCategoria(categoria);
         }
         
-        // Mapear campos del request
-        ArticuloInsumo updated = articuloInsumoMapper.toEntity(request);
-        updated.setId(existing.getId());
+        // Actualizamos los campos manualmente para no perder el stockActual que está en la DB
+        existing.setNombre(request.getNombre());
+        existing.setPrecioCosto(request.getPrecioCosto());
+        existing.setMargen(request.getMargen());
+        existing.setStockMaximo(request.getStockMaximo());
+        existing.setStockMinimo(request.getStockMinimo());
         
-        // Calcular precio de venta si se proporciona
         if (request.getPrecioVenta() != null) {
-            updated.calcularPrecioVenta(request.getPrecioVenta());
+            existing.calcularPrecioVenta(request.getPrecioVenta());
         }
         
-        ArticuloInsumo saved = articuloInsumoRepository.save(updated);
-        return articuloInsumoMapper.toFullResponse(saved);
+        return articuloInsumoMapper.toFullResponse(articuloInsumoRepository.save(existing));
     }
 
-    /**
-     * Elimina un artículo insumo.
-     * 
-     * @param id ID del insumo a eliminar
-     * @throws EntityNotFoundException si no se encuentra el insumo
-     */
     @Override
     public void delete(Long id) {
         if (!articuloInsumoRepository.existsById(id)) {
@@ -143,11 +130,6 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
         articuloInsumoRepository.deleteById(id);
     }
 
-    /**
-     * Obtiene todos los insumos activos (disponibles).
-     * 
-     * @return Lista de respuestas base de insumos activos
-     */
     @Override
     public List<ArticuloInsumoBaseResponse> getActivos() {
         return articuloInsumoRepository.findByActivoTrue()

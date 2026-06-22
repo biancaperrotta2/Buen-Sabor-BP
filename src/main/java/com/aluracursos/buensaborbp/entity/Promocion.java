@@ -17,6 +17,11 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import com.aluracursos.buensaborbp.entity.Enums.TipoPromocion;
+
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+
 
 @Entity
 @Data
@@ -25,6 +30,10 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class Promocion extends Articulo {
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoPromocion tipoPromocion;
 
     @Column(nullable = false)
     private LocalDate fechaDesde;

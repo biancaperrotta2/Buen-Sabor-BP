@@ -6,17 +6,16 @@ import org.mapstruct.Mapper;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {DetallePedidoMapper.class, })
+@Mapper(componentModel = "spring")
 public interface PedidoMapper {
-    PedidoBaseResponse toBaseResponse(Pedido entity);
+    // Para el Cliente (Mis Órdenes)
+    PedidoBaseResponse toBaseResponse(Pedido pedido);
+    List<PedidoBaseResponse> toBaseResponseList(List<Pedido> pedidos);
 
-    PedidoFullResponse toFullResponse(Pedido entity);
+    // Para el Cocinero (Pantalla de Cocina)
+    PedidoCocinaResponse toCocinaResponse(Pedido pedido);
+    List<PedidoCocinaResponse> toCocinaResponseList(List<Pedido> pedidos);
 
-    PedidoCocinaResponse toCocinaResponse(Pedido entity);
-
-    Pedido toEntity(PedidoRequest request);
-
-    List<PedidoBaseResponse> toBaseResponseList(List<Pedido> entities);
-
-    List<PedidoCocinaResponse> toCocinaResponseList(List<Pedido> entities);
+    // Detalle completo
+    PedidoFullResponse toFullResponse(Pedido pedido);
 }
