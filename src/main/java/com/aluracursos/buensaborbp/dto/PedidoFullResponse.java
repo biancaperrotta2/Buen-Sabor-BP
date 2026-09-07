@@ -21,9 +21,10 @@ public record PedidoFullResponse(
     FormaPago formaPago,
     BigDecimal costoTotal,
     BigDecimal gastosEnvio,
-    Double descuento,
+    BigDecimal descuento,
     BigDecimal total,
-    ClienteBaseResponse cliente, 
+    ClienteBaseResponse cliente,
+    RepartidorResponse repartidor,
     List<DetallePedidoFullResponse> detallePedidos
 ) {}
 

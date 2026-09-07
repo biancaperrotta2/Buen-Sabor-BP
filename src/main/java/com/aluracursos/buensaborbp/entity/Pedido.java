@@ -49,6 +49,10 @@ public class Pedido {
 
     private BigDecimal gastosEnvio;
 
+    // Monto (no porcentaje) del 10% que se descuenta cuando el pedido es TAKE_AWAY.
+    // Null si es DELIVERY, donde no aplica descuento.
+    private BigDecimal descuento;
+
     private String aclaracionDomicilio;
 
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -57,6 +61,12 @@ public class Pedido {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "factura_id")
     private Factura factura;
+
+    // El pago se confirma (webhook de Mercado Pago) mucho antes de que exista la Factura
+    // (que recién se genera al marcar el pedido ENTREGADO), por eso el dato de pago vive acá.
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "detalle_mercado_pago_id")
+    private DetalleMercadoPago detalleMercadoPago;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sucursal_id")
@@ -70,19 +80,38 @@ public class Pedido {
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
+    // Se asigna cuando un REPARTIDOR toma el pedido (ver PedidoServiceImpl.tomarPedido);
+    // null hasta ese momento y para pedidos que son TAKE_AWAY.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "repartidor_id")
+    private Empleado repartidor;
+
     // Guarda el domicilio textual del momento del pedido
     private String domicilioSnapshot;
 
     // === MÉTODOS ===
+
+    // Retiro en el local: 10% de descuento sobre el subtotal de productos (política del negocio).
+    private static final BigDecimal PORCENTAJE_DESCUENTO_RETIRO_LOCAL = new BigDecimal("0.10");
+
     public void calcularTotal() {
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal subtotalProductos = BigDecimal.ZERO;
 
         if (detallePedidos != null && !detallePedidos.isEmpty()) {
             for (DetallePedido detalle : detallePedidos) {
                 if (detalle != null && detalle.getSubtotal() != null) {
-                    total = total.add(detalle.getSubtotal());
+                    subtotalProductos = subtotalProductos.add(detalle.getSubtotal());
                 }
             }
+        }
+
+        BigDecimal total = subtotalProductos;
+
+        if (tipoEnvio == TipoEnvio.TAKE_AWAY) {
+            this.descuento = subtotalProductos.multiply(PORCENTAJE_DESCUENTO_RETIRO_LOCAL);
+            total = total.subtract(this.descuento);
+        } else {
+            this.descuento = null;
         }
 
         if (tipoEnvio == TipoEnvio.DELIVERY && gastosEnvio != null) {
@@ -90,6 +119,14 @@ public class Pedido {
         }
 
         this.total = total;
+    }
+
+    // El cocinero demora el pedido: pospone la hora estimada de entrega 10 minutos.
+    // Se puede llamar más de una vez si se vuelve a demorar (acumula).
+    public void demorar() {
+        if (horaEstimadaFinalizacion != null) {
+            this.horaEstimadaFinalizacion = horaEstimadaFinalizacion.plusMinutes(10);
+        }
     }
 
     public void calcularCostoTotal() {
