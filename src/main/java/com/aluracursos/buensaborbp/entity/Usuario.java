@@ -4,8 +4,12 @@ import com.aluracursos.buensaborbp.entity.Enums.Rol;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Entity
@@ -14,7 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class Usuario {
+public class Usuario implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id_usuario;
@@ -37,15 +41,49 @@ public class Usuario {
     @Column(nullable = false)
     private String telefono;
 
+    @Builder.Default
     @Column(name = "fecha_registro",nullable = false, updatable=false)
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 
     @Enumerated(EnumType.STRING)
     private Rol rol;
 
+    @Builder.Default
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ImagenUsuario> imagenes = new ArrayList<>();
 
     // Para autenticación OAuth2
     private String oauth2Id;
+
+    // --- UserDetails (Spring Security) ---
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + rol.name()));
+    }
+
+    @Override
+    public String getUsername() {
+        return usuario;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }
