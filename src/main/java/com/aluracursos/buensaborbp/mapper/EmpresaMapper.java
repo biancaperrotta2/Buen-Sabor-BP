@@ -10,9 +10,10 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {SucursalMapper.class})
 public interface EmpresaMapper {
 
+    @Mapping(target = "sucursales", source = "listaSucursal")
     EmpresaResponse toResponse(Empresa empresa);
 
     @Mapping(target = "listaSucursal", ignore = true)

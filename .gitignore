@@ -1,5 +1,9 @@
 HELP.md
 target/
+CLAUDE.md
+
+### Secrets locales ###
+src/main/resources/application-local.properties
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

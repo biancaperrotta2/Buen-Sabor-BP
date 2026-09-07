@@ -7,7 +7,6 @@ import java.util.List;
 @Repository
 public interface CiudadRepository extends BaseRepository<Ciudad, Long> {
     
-    List<Ciudad> findByAltaTrue();
     List<Ciudad> findByProvinciaId(Long provinciaId);
 } 
 

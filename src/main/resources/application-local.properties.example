@@ -1,0 +1,19 @@
+# Plantilla de application-local.properties.
+# Copiá este archivo como "application-local.properties" (sin .example) en la misma carpeta
+# y completá los valores reales. Ese archivo no se versiona.
+
+spring.datasource.username=root
+spring.datasource.password=TU_PASSWORD_MYSQL
+
+cloudinary.api_key=TU_CLOUDINARY_API_KEY
+cloudinary.api_secret=TU_CLOUDINARY_API_SECRET
+
+# Generar con: openssl rand -base64 48
+api.security.secret=GENERAR_UN_SECRET_ALEATORIO_LARGO
+
+# Panel: developers.mercadopago.com > Tus integraciones > tu app > Credenciales de PRUEBA
+mercadopago.access-token=TEST-TU_ACCESS_TOKEN
+# Panel de la app > Webhooks > Firma secreta
+mercadopago.webhook-secret=TU_FIRMA_SECRETA
+# URL pública (ngrok) + /webhooks/mercadopago, ej: https://abcd-1234.ngrok-free.app/webhooks/mercadopago
+mercadopago.notification-url=TU_URL_PUBLICA/webhooks/mercadopago
