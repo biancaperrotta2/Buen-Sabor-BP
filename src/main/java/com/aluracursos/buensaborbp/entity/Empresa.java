@@ -24,8 +24,10 @@ public class Empresa {
     @Column(nullable = false)
     private String razonSocial;
 
+    // Long, no Integer: un CUIT real tiene 11 dígitos y desborda un int (ver EmpresaRequest/
+    // Response y EmpresaRepository.existsByCuit, que ya esperaban Long).
     @Column(nullable = false)
-    private Integer cuit;
+    private Long cuit;
 
     @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true )
     private List<Sucursal> listaSucursal;
