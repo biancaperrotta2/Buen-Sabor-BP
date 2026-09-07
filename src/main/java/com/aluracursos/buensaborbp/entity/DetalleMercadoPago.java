@@ -15,7 +15,8 @@ public class DetalleMercadoPago {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Integer id_Pago;
+    // El id de pago que devuelve Mercado Pago es Long (puede superar el rango de Integer).
+    private Long id_Pago;
     private Integer id_Orden;
     private String idPreferencia;
     private String tipoPago;
