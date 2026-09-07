@@ -8,5 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ArticuloManufacturadoRepository extends JpaRepository <ArticuloManufacturado, Long> {
 
-    Page<ArticuloManufacturado> findAllByActivoTrue(PageRequest of);
+    // El catálogo (público o de admin) muestra platos finales, nunca semielaborados
+    // (esos tienen su propia pantalla — ver findAllByEsSemielaboradoTrue).
+    Page<ArticuloManufacturado> findAllByActivoTrueAndEsSemielaboradoFalse(PageRequest of);
+
+    Page<ArticuloManufacturado> findAllByEsSemielaboradoFalse(PageRequest of);
+
+    Page<ArticuloManufacturado> findAllByEsSemielaboradoTrue(PageRequest of);
 }

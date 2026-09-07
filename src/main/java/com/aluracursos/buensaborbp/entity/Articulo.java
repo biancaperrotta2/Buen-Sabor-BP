@@ -111,6 +111,16 @@ public abstract class Articulo {
         this.esVendible = false;
     }
 
+    // Compartido por ArticuloInsumo y por ArticuloManufacturado cuando es semielaborado
+    // (ambos llevan stock propio en su unidad de medida); no aplica a un plato final, que
+    // nunca convierte cantidades propias, solo cascada a sus componentes.
+    public double convertirACantidadBase(double cantidad) {
+        if (getUnidadMedidaEnum() == null) {
+            throw new IllegalStateException("La unidad de medida no está definida para: " + this.getNombre());
+        }
+        return cantidad * getUnidadMedidaEnum().getFactor();
+    }
+
     //metodos abstractos
     public abstract void reservarStock(double cantidad, String articuloPadreNombre);
 

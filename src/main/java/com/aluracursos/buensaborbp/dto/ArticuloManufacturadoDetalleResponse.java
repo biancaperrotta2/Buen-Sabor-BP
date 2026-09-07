@@ -1,8 +1,10 @@
 package com.aluracursos.buensaborbp.dto;
 
-import com.aluracursos.buensaborbp.entity.ArticuloInsumo;
-
+// No expone la entidad completa del componente (podía ser un insumo o, ahora, otro
+// ArticuloManufacturado semielaborado): alcanza con lo que necesita mostrar la receta.
 public record ArticuloManufacturadoDetalleResponse(
-    Integer cantidad,
-    ArticuloInsumo articuloInsumo
+    Double cantidad,
+    Long idComponente,
+    String nombreComponente,
+    Boolean esSemielaborado
 ) {}

@@ -8,7 +8,10 @@ public record ArticuloManufacturadoFullResponse(
         String denominacion,
         String descripcion,
         Integer tiempoEstimado,
-        Integer stockActual,
+        Boolean esSemielaborado,
+        Double stockActual,
+        Double stockMinimo,
+        Double stockMaximo,
         BigDecimal precioVenta,
         BigDecimal precioCosto, // calculado en el back
         BigDecimal ganancia,    // también calculado en el back

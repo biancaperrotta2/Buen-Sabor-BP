@@ -81,13 +81,6 @@ public class ArticuloInsumo extends Articulo{
         }
     }
 
-    public double convertirACantidadBase(double cantidad) {
-        if (getUnidadMedidaEnum() == null) {
-            throw new IllegalStateException("La unidad de medida no está definida para el insumo: " + this.getNombre());
-        }
-        return cantidad * getUnidadMedidaEnum().getFactor();
-    }
-
 /**
  * Devuelve true si este insumo tiene stock igual o por debajo del stock mínimo.
  */

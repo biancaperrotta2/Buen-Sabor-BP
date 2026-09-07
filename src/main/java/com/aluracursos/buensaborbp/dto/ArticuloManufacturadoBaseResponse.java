@@ -7,6 +7,7 @@ public record ArticuloManufacturadoBaseResponse(
     String denominacion,
     String descripcion,
     BigDecimal precioVenta,
-    String imagenUrl
+    String imagenUrl,
+    Boolean esSemielaborado
 ) { }
 

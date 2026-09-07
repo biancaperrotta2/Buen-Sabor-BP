@@ -16,5 +16,6 @@ public interface ArticuloManufacturadoService {
 
     //  metodo adicional
     Page<ArticuloManufacturadoBaseResponse> getActivos(); //devuelve una página de manufacturados ACTIVOS
+    Page<ArticuloManufacturadoBaseResponse> getSemielaborados(); // solo los marcados esSemielaborado=true
     Boolean verificarStockParaVenta(Long manufacturadoId, Integer cantidadDeseada);
 }

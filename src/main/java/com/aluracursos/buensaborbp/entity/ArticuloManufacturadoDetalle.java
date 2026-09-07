@@ -19,9 +19,12 @@ public class ArticuloManufacturadoDetalle {
     @Column(nullable = false)
     private Double cantidad;
 
+    // Puede ser un ArticuloInsumo o un ArticuloManufacturado marcado esSemielaborado=true;
+    // nunca un plato final ni una Promocion (se valida al armar el detalle, ver
+    // ArticuloManufacturadoServiceImpl.construirDetalles).
     @ManyToOne()
-    @JoinColumn(name = "articulo_insumo_id")
-    private ArticuloInsumo articuloInsumo;
+    @JoinColumn(name = "componente_id")
+    private Articulo componente;
 
     @ManyToOne
     @JoinColumn(name = "articulo_manufacturado_id", nullable = false)
