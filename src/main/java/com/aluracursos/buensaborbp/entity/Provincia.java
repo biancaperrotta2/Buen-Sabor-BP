@@ -20,6 +20,10 @@ public class Provincia {
     @Column(nullable = false)
     private String nombre;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pais_id")
+    private Pais pais;
+
     @OneToMany(mappedBy = "provincia", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Ciudad> ciudades;
 

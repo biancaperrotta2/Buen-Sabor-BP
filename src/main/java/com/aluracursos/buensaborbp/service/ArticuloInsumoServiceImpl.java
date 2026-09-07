@@ -17,7 +17,7 @@ import com.aluracursos.buensaborbp.repository.CategoriaRepository;
 @Service
 @Transactional
 public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, Long> implements ArticuloInsumoService {
-    
+
     private final ArticuloInsumoRepository articuloInsumoRepository;
     private final ArticuloInsumoMapper articuloInsumoMapper;
     private final CategoriaRepository categoriaRepository;
@@ -38,7 +38,7 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
     public void reservarStock(Long id, double cantidad, String articuloNombre) {
         ArticuloInsumo insumo = articuloInsumoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
-        
+
         insumo.reservarStock(cantidad, articuloNombre); // Llama a tu método en la entidad
         articuloInsumoRepository.save(insumo); // Persiste el cambio en la DB
     }
@@ -47,7 +47,7 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
     public void liberarStock(Long id, double cantidad) {
         ArticuloInsumo insumo = articuloInsumoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
-        
+
         insumo.liberarStock(cantidad);
         articuloInsumoRepository.save(insumo);
     }
@@ -56,7 +56,7 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
     public void confirmarVenta(Long id, double cantidad) {
         ArticuloInsumo insumo = articuloInsumoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
-        
+
         insumo.confirmarStock(cantidad);
         articuloInsumoRepository.save(insumo);
     }
@@ -80,20 +80,20 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
 
     @Override
     public ArticuloInsumoFullResponse crearArticuloInsumo(ArticuloInsumoRequest request) {
-        if (request.getCategoria() == null || request.getCategoria().getIdCategoriaPadre() == null) {
+        if (request.categoria() == null || request.categoria().idCategoriaPadre() == null) {
             throw new IllegalArgumentException("La categoría es obligatoria");
         }
-        
-        Categoria categoria = categoriaRepository.findById(request.getCategoria().getIdCategoriaPadre())
+
+        Categoria categoria = categoriaRepository.findById(request.categoria().idCategoriaPadre())
                 .orElseThrow(() -> new EntityNotFoundException("Categoría no encontrada"));
-        
+
         ArticuloInsumo insumo = articuloInsumoMapper.toEntity(request);
         insumo.setCategoria(categoria);
-        
-        if (request.getPrecioVenta() != null) {
-            insumo.calcularPrecioVenta(request.getPrecioVenta());
+
+        if (request.precioVenta() != null) {
+            insumo.calcularPrecioVenta(request.precioVenta());
         }
-        
+
         return articuloInsumoMapper.toFullResponse(articuloInsumoRepository.save(insumo));
     }
 
@@ -101,24 +101,24 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
     public ArticuloInsumoFullResponse update(Long id, ArticuloInsumoRequest request) {
         ArticuloInsumo existing = articuloInsumoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró el insumo con ID: " + id));
-        
-        if (request.getCategoria() != null && request.getCategoria().getIdCategoriaPadre() != null) {
-            Categoria categoria = categoriaRepository.findById(request.getCategoria().getIdCategoriaPadre())
+
+        if (request.categoria() != null && request.categoria().idCategoriaPadre() != null) {
+            Categoria categoria = categoriaRepository.findById(request.categoria().idCategoriaPadre())
                     .orElseThrow(() -> new EntityNotFoundException("Categoría no encontrada"));
             existing.setCategoria(categoria);
         }
-        
+
         // Actualizamos los campos manualmente para no perder el stockActual que está en la DB
-        existing.setNombre(request.getNombre());
-        existing.setPrecioCosto(request.getPrecioCosto());
-        existing.setMargen(request.getMargen());
-        existing.setStockMaximo(request.getStockMaximo());
-        existing.setStockMinimo(request.getStockMinimo());
-        
-        if (request.getPrecioVenta() != null) {
-            existing.calcularPrecioVenta(request.getPrecioVenta());
+        existing.setNombre(request.denominacion());
+        existing.setPrecioCosto(request.precioCompra());
+        existing.setMargen(request.margen());
+        existing.setStockMaximo(request.stockMaximo());
+        existing.setStockMinimo(request.stockMinimo());
+
+        if (request.precioVenta() != null) {
+            existing.calcularPrecioVenta(request.precioVenta());
         }
-        
+
         return articuloInsumoMapper.toFullResponse(articuloInsumoRepository.save(existing));
     }
 

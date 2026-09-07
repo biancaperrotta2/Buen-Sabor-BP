@@ -11,5 +11,6 @@ public interface CategoriaService extends BaseService<Categoria, Long>{
     CategoriaFullResponse actualizarCategoria(Long id, CategoriaRequest request);
     CategoriaBaseResponse buscarCategoriaID(Long id);
     List<CategoriaBaseResponse> mostrarCategorias();
+    List<CategoriaBaseResponse> listarHijas(Long categoriaPadreId);
     void desactivarCategoria(Long id);
 }

@@ -41,7 +41,7 @@ public class PromocionServiceImpl extends BaseServiceImpl<Promocion, Long> imple
     @Transactional(readOnly = true)
     public PromocionFullResponse buscarPorIdFull(Long id) {
         Promocion p = promocionRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada"));
+            .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada con ID: " + id));
         return promocionMapper.toFullResponse(p);
     }
 
@@ -55,18 +55,25 @@ public class PromocionServiceImpl extends BaseServiceImpl<Promocion, Long> imple
             .horaDesde(request.horaDesde())
             .horaHasta(request.horaHasta())
             .descripcionDescuento(request.descripcionDescuento())
+            .tipoPromocion(request.tipoPromocion()) // Mapeo del Enum
             .promocionDetalle(new ArrayList<>())
             .build();
 
         // Agregamos los artículos al detalle
-        request.detalles().forEach(d -> {
-            Articulo art = articuloRepository.findById(d.idArticulo()).get();
-            p.getPromocionDetalle().add(PromocionDetalle.builder()
-                .articulos(art)
-                .cantidad(d.cantidad())
-                .articuloPromocion(p)
-                .build());
-        });
+        if (request.detalles() != null) {
+            request.detalles().forEach(d -> {
+                Articulo art = articuloRepository.findById(d.idArticulo())
+                    .orElseThrow(() -> new EntityNotFoundException("Artículo no encontrado con ID: " + d.idArticulo()));
+                
+                PromocionDetalle detalle = PromocionDetalle.builder()
+                    .articulos(art)
+                    .cantidad(d.cantidad())
+                    .articuloPromocion(p)
+                    .build();
+                    
+                p.getPromocionDetalle().add(detalle);
+            });
+        }
 
         // Aplicamos métodos de cálculo de la entidad
         p.calcularPrecioCosto();
@@ -81,7 +88,7 @@ public class PromocionServiceImpl extends BaseServiceImpl<Promocion, Long> imple
     public PromocionFullResponse actualizarPromocion(Long id, PromocionRequest request) {
         // Buscar la promoción existente
         Promocion promocion = promocionRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada"));
+            .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada con ID: " + id));
 
         // Actualizar campos principales
         promocion.setNombre(request.nombre());
@@ -90,17 +97,22 @@ public class PromocionServiceImpl extends BaseServiceImpl<Promocion, Long> imple
         promocion.setFechaHasta(request.fechaHasta());
         promocion.setHoraDesde(request.horaDesde());
         promocion.setHoraHasta(request.horaHasta());
+        promocion.setTipoPromocion(request.tipoPromocion()); // Mapeo del Enum
 
         // Actualizar detalles: limpiar y agregar los nuevos detalles
         promocion.getPromocionDetalle().clear();
         if (request.detalles() != null) {
             request.detalles().forEach(d -> {
-                Articulo art = articuloRepository.findById(d.idArticulo()).get();
-                promocion.getPromocionDetalle().add(PromocionDetalle.builder()
+                Articulo art = articuloRepository.findById(d.idArticulo())
+                    .orElseThrow(() -> new EntityNotFoundException("Artículo no encontrado con ID: " + d.idArticulo()));
+                
+                PromocionDetalle detalle = PromocionDetalle.builder()
                     .articulos(art)
                     .cantidad(d.cantidad())
                     .articuloPromocion(promocion)
-                    .build());
+                    .build();
+                    
+                promocion.getPromocionDetalle().add(detalle);
             });
         }
 
@@ -115,30 +127,29 @@ public class PromocionServiceImpl extends BaseServiceImpl<Promocion, Long> imple
         return promocionMapper.toFullResponse(promocion);
     }
 
-@Override
-@Transactional(readOnly = true)
-public List<PromocionFullResponse> listarTodoParaAdmin() {
-    // Obtener todas las promociones (habilitadas y no habilitadas)
-    List<Promocion> promociones = promocionRepository.findAll();
+    @Override
+    @Transactional(readOnly = true)
+    public List<PromocionFullResponse> listarTodoParaAdmin() {
+        // Obtener todas las promociones (habilitadas y no habilitadas)
+        List<Promocion> promociones = promocionRepository.findAll();
 
-    // Mapear cada promoción a su DTO correspondiente
-    return promociones.stream()
-            .map(promocionMapper::toFullResponse)
-            .toList();
-}
+        // Mapear cada promoción a su DTO correspondiente
+        return promociones.stream()
+                .map(promocionMapper::toFullResponse)
+                .toList();
+    }
 
-@Override
-@Transactional
-public void cambiarEstadoHabilitacion(Long id) {
-    // Buscar la promoción por su id
-    Promocion promocion = promocionRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada con id: " + id));
+    @Override
+    @Transactional
+    public void cambiarEstadoHabilitacion(Long id) {
+        // Buscar la promoción por su id
+        Promocion promocion = promocionRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Promoción no encontrada con ID: " + id));
 
-    // Cambiar el estado de habilitación (baja lógica)
-    promocion.setActivo(!Boolean.TRUE.equals(promocion.getActivo()));
+        // Cambiar el estado de habilitación (baja lógica)
+        promocion.setActivo(!Boolean.TRUE.equals(promocion.getActivo()));
 
-    // Guardar cambios
-    promocionRepository.save(promocion);
-}
-
+        // Guardar cambios
+        promocionRepository.save(promocion);
+    }
 }

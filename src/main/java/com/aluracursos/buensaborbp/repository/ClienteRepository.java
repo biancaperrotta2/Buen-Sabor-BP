@@ -15,6 +15,13 @@ public interface ClienteRepository extends BaseRepository<Cliente, Long> {
     Optional<Cliente> findByEmail(String email);
 
     /**
+     * Busca un cliente por su nombre de usuario de login.
+     * Es lo que realmente identifica al usuario autenticado: el subject del JWT
+     * es Usuario.usuario (ver TokenService), no el email.
+     */
+    Optional<Cliente> findByUsuario(String usuario);
+
+    /**
      * Buscar clientes por apellido 
      * (Útil para filtros de administración)
      */

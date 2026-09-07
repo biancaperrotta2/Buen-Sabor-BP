@@ -41,6 +41,12 @@ public class CategoriaServiceImpl extends BaseServiceImpl<Categoria, Long> imple
 
     @Override
     @Transactional
+    public List<CategoriaBaseResponse> listarHijas(Long categoriaPadreId) {
+        return categoriaMapper.toBaseResponseList(categoriaRepository.findByCategoriaPadreId(categoriaPadreId));
+    }
+
+    @Override
+    @Transactional
     public CategoriaFullResponse crearCategoria(CategoriaRequest request) {
         Categoria nueva = categoriaMapper.toEntity(request);
 

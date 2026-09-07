@@ -1,23 +1,24 @@
 package com.aluracursos.buensaborbp.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-public class UnidadMedida {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id_unidadMedida;
+@SuperBuilder
+public class UnidadMedida extends Base {
+
+    @Column(nullable = false, unique = true)
+    private String denominacion; // Ej: "Gramos", "Kilos", "Litros", "Unidad"
 
     @Column(nullable = false)
-    private String denominacion;
-    
-    private Double factor;
+    private String abreviatura; // Ej: "gr", "kg", "lt", "un"
 }

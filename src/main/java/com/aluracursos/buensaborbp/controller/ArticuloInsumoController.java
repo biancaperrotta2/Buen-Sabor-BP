@@ -15,11 +15,15 @@ import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoRequest;
 import com.aluracursos.buensaborbp.service.ArticuloInsumoServiceImpl;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+// Insumos: datos internos de costo/stock, no forman parte del catálogo público. Solo ADMIN.
 @RestController
 @RequestMapping("/insumos")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class ArticuloInsumoController {
 
     private final ArticuloInsumoServiceImpl servicio;
@@ -47,7 +51,7 @@ public class ArticuloInsumoController {
 
     //POST - Crea un nuevo insumo
     @PostMapping
-    public ResponseEntity<ArticuloInsumoFullResponse> crearInsumo(@RequestBody ArticuloInsumoRequest request) {
+    public ResponseEntity<ArticuloInsumoFullResponse> crearInsumo(@Valid @RequestBody ArticuloInsumoRequest request) {
         ArticuloInsumoFullResponse creado = servicio.crearArticuloInsumo(request);
         return ResponseEntity.ok(creado);
     }
@@ -56,7 +60,7 @@ public class ArticuloInsumoController {
     @PutMapping("/{id}")
     public ResponseEntity<ArticuloInsumoFullResponse> actualizarInsumo(
             @PathVariable Long id,
-            @RequestBody ArticuloInsumoRequest request) {
+            @Valid @RequestBody ArticuloInsumoRequest request) {
 
         ArticuloInsumoFullResponse actualizado = servicio.update(id, request);
         return ResponseEntity.ok(actualizado);

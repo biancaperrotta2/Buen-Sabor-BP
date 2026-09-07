@@ -1,3 +1,10 @@
 package com.aluracursos.buensaborbp.dto;
 
-public record CategoriaRequest(String denominacion, Long idCategoriaPadre) { }
+import jakarta.validation.constraints.NotBlank;
+
+public record CategoriaRequest(
+    @NotBlank(message = "La denominación es obligatoria")
+    String denominacion,
+
+    Long idCategoriaPadre
+) { }

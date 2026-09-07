@@ -9,8 +9,13 @@ import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {DomicilioMapper.class, ImagenUsuarioMapper.class, PedidoMapper.class})
 public interface ClienteMapper {
+    @Mapping(target = "id", source = "id_usuario")
+    @Mapping(target = "fotoPerfilCliente", expression = "java(entity.getImagenes().isEmpty() ? null : new com.aluracursos.buensaborbp.dto.ImagenUsuarioResponse(entity.getImagenes().get(0).getId(), entity.getImagenes().get(0).getUrlImagen(), entity.getImagenes().get(0).getDenominacion()))")
+    @Mapping(target = "pedidos", source = "listaPedido")
     ClienteBaseResponse toBaseResponse(Cliente entity);
 
+    @Mapping(target = "id", source = "id_usuario")
+    @Mapping(target = "fotoPerfilCliente", expression = "java(entity.getImagenes().isEmpty() ? null : new com.aluracursos.buensaborbp.dto.ImagenUsuarioResponse(entity.getImagenes().get(0).getId(), entity.getImagenes().get(0).getUrlImagen(), entity.getImagenes().get(0).getDenominacion()))")
     ClienteFullResponse toFullResponse(Cliente entity);
 
     Cliente toEntity(ClienteRequest request);

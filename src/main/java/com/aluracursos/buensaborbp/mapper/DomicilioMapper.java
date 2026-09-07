@@ -13,6 +13,7 @@ public interface DomicilioMapper {
     DomicilioBaseResponse toBaseResponse(Domicilio entity);
 
     @Mapping(source = "ciudad.nombre", target = "ciudad")
+    @Mapping(target = "departamento", source = "nroDepto")
     DomicilioFullResponse toFullResponse(Domicilio entity);
 
     Domicilio toEntity(DomicilioRequest request);

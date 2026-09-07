@@ -1,14 +1,18 @@
 package com.aluracursos.buensaborbp.dto;
 
+import java.math.BigDecimal;
+
 public record ArticuloInsumoFullResponse(
     Long id,
     String denominacion,
-    Double precioCompra,
-    Double precioVenta,
+    BigDecimal precioCompra,
+    BigDecimal precioVenta,
+    Float margen,
     Double stockActual,
     Double stockMaximo,
-    Boolean esParaElaborar,
     Double stockMinimo,
+    Double stockReservado,
+    Boolean esParaElaborar,
     Boolean activo,
     CategoriaFullResponse categoria,
     UnidadMedidaResponse unidadMedida
