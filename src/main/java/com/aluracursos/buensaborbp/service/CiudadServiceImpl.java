@@ -12,6 +12,8 @@ import com.aluracursos.buensaborbp.repository.ProvinciaRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Service
 public class CiudadServiceImpl extends BaseServiceImpl<Ciudad, Long> implements CiudadService {
 
@@ -30,6 +32,12 @@ public class CiudadServiceImpl extends BaseServiceImpl<Ciudad, Long> implements 
 
     @Override
     @Transactional(readOnly = true)
+    public List<CiudadResponse> getAll() {
+        return ciudadMapper.toResponseList(ciudadRepository.findAll());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<CiudadResponse> listarPorProvincia(Long provinciaId) {
         return ciudadMapper.toResponseList(ciudadRepository.findByProvinciaId(provinciaId));
     }
@@ -43,7 +51,19 @@ public class CiudadServiceImpl extends BaseServiceImpl<Ciudad, Long> implements 
         Ciudad ciudad = Ciudad.builder()
                 .nombre(request.nombre())
                 .provincia(provincia)
+                .costoEnvio(request.costoEnvio())
                 .build();
+
+        return ciudadMapper.toResponse(ciudadRepository.save(ciudad));
+    }
+
+    @Override
+    @Transactional
+    public CiudadResponse actualizarCostoEnvio(Long id, BigDecimal costoEnvio) {
+        Ciudad ciudad = ciudadRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Ciudad no encontrada"));
+
+        ciudad.setCostoEnvio(costoEnvio);
 
         return ciudadMapper.toResponse(ciudadRepository.save(ciudad));
     }
