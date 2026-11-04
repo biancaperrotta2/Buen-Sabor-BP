@@ -6,10 +6,13 @@ import com.aluracursos.buensaborbp.dto.ClienteRequest;
 import com.aluracursos.buensaborbp.dto.DomicilioBaseResponse;
 import com.aluracursos.buensaborbp.dto.DomicilioFullResponse;
 import com.aluracursos.buensaborbp.dto.DomicilioRequest;
+import com.aluracursos.buensaborbp.dto.PageResponse;
 import com.aluracursos.buensaborbp.entity.Usuario;
 import com.aluracursos.buensaborbp.service.ClienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,8 +36,10 @@ public class ClienteController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ClienteBaseResponse>> listarClientes() {
-        return ResponseEntity.ok(clienteService.mostrarClientes());
+    public ResponseEntity<PageResponse<ClienteBaseResponse>> listarClientes(
+            @RequestParam(required = false, defaultValue = "") String busqueda,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(clienteService.mostrarClientes(busqueda, pageable));
     }
 
     @GetMapping("/{id}")
@@ -53,6 +58,13 @@ public class ClienteController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         clienteService.desactivarCliente(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/activar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> reactivar(@PathVariable Long id) {
+        clienteService.reactivarCliente(id);
         return ResponseEntity.noContent().build();
     }
 

@@ -48,14 +48,14 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/clientes/registro").permitAll()
+                        .requestMatchers("/login/**", "/clientes/registro").permitAll()
                         // Lo llama Mercado Pago server-to-server, sin nuestro JWT. La autenticidad
                         // se valida con la firma x-signature (ver WebhookMercadoPagoController), no acá.
                         .requestMatchers(HttpMethod.POST, "/webhooks/mercadopago").permitAll()
                         // Catálogo público: cualquiera puede navegar categorías, productos y unidades de
                         // medida sin loguearse. Los insumos quedan protegidos (son datos internos de costo/stock).
                         // Ciudades/provincias también públicas: se necesitan para completar el formulario de registro.
-                        .requestMatchers(HttpMethod.GET, "/categoria/**", "/articulo-manufacturado/**", "/unidad-medida/**", "/ciudades/**", "/api/provincias/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/categoria/**", "/articulo-manufacturado/**", "/unidad-medida/**", "/ciudades/**", "/api/provincias/**", "/promociones", "/insumos/vendibles").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

@@ -19,6 +19,11 @@ public class Cliente extends Usuario{
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Override
+    public boolean estaActivo() {
+        return !Boolean.FALSE.equals(activo);
+    }
+
     @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinTable(
             name = "cliente_domicilio",

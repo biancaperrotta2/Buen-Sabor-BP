@@ -1,5 +1,7 @@
 package com.aluracursos.buensaborbp.dto;
 
+import java.math.BigDecimal;
+
 public record DomicilioFullResponse(
     Long id,
     String calle,
@@ -8,5 +10,6 @@ public record DomicilioFullResponse(
     String departamento,
     String ciudad,
     String aclaraciones,
-    String alias
+    String alias,
+    BigDecimal costoEnvio
 ) {}

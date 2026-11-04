@@ -4,6 +4,7 @@ CLAUDE.md
 
 ### Secrets locales ###
 src/main/resources/application-local.properties
+src/main/resources/firebase-service-account.json
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -35,3 +36,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Configuración local del editor
+.claude/

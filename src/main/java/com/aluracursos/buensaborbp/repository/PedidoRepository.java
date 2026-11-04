@@ -25,6 +25,9 @@ public interface PedidoRepository extends BaseRepository<Pedido, Long> {
     @Query("SELECT p FROM Pedido p WHERE p.repartidor.id_usuario = :repartidorId ORDER BY p.fechaPedido DESC")
     List<Pedido> findByRepartidorIdOrderByFechaPedidoDesc(@Param("repartidorId") Long repartidorId);
 
+    // Pedidos listos para retirar en el mostrador (a diferencia de disponibles-envio, que es delivery).
+    List<Pedido> findByEstadoAndTipoEnvioOrderByHoraEstimadaFinalizacionAsc(Estado estado, TipoEnvio tipoEnvio);
+
     // --- Reportes de administrador ---
     List<Pedido> findByFechaPedidoBetweenAndEstado(LocalDate desde, LocalDate hasta, Estado estado);
 

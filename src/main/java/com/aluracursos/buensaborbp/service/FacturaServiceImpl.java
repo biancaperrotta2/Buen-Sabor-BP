@@ -7,11 +7,13 @@ import com.aluracursos.buensaborbp.entity.Factura;
 import org.springframework.transaction.annotation.Transactional;
 import com.aluracursos.buensaborbp.dto.FacturaBaseResponse;
 import com.aluracursos.buensaborbp.dto.FacturaFullResponse;
+import com.aluracursos.buensaborbp.dto.PageResponse;
 import com.aluracursos.buensaborbp.entity.Pedido;
 import com.aluracursos.buensaborbp.repository.FacturaRepository;
 import com.aluracursos.buensaborbp.repository.PedidoRepository;
 import com.aluracursos.buensaborbp.mapper.FacturaMapper;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +36,9 @@ public class FacturaServiceImpl extends BaseServiceImpl<Factura, Long> implement
 
     @Override
     @Transactional(readOnly = true)
-    public List<FacturaBaseResponse> mostrarTodasLasFacturas() {
-        List<Factura> facturas = facturaRepository.findAll();
-        return facturaMapper.toBaseResponseList(facturas);
+    public PageResponse<FacturaBaseResponse> mostrarTodasLasFacturas(String busqueda, Pageable pageable) {
+        String filtro = busqueda != null ? busqueda.trim() : "";
+        return PageResponse.de(facturaRepository.buscar(filtro, pageable), facturaMapper::toBaseResponse);
     }
 
     @Override
@@ -86,6 +88,14 @@ public class FacturaServiceImpl extends BaseServiceImpl<Factura, Long> implement
             factura.getDetallesFactura().add(df);
         });
 
-        return facturaMapper.toFullResponse(facturaRepository.save(factura));
+        Factura facturaGuardada = facturaRepository.save(factura);
+        // Pedido.factura es el otro lado de esta relación (columna factura_id, en la
+        // tabla pedido): sin setearlo, el pedido nunca queda enterado de su propia
+        // factura y cualquier consulta que lo recorra desde ahí (p. ej. el idFactura
+        // que ve el cliente en "Mis pedidos") lo ve como null aunque la factura exista.
+        pedido.setFactura(facturaGuardada);
+        pedidoRepository.save(pedido);
+
+        return facturaMapper.toFullResponse(facturaGuardada);
     }
 }

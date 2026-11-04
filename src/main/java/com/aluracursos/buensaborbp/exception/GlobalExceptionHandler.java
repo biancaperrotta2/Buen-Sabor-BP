@@ -11,6 +11,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -79,6 +80,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
         return build(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos", request);
+    }
+
+    @ExceptionHandler(ImagenNoSubidaException.class)
+    public ResponseEntity<ApiError> handleImagenNoSubida(ImagenNoSubidaException ex, HttpServletRequest request) {
+        log.error("Falló la subida de imagen a Cloudinary en {}", request.getRequestURI(), ex.getCause());
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
+    }
+
+    // Se dispara antes de llegar al controller cuando el archivo pasa el límite de spring.servlet.multipart.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleArchivoDemasiadoGrande(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Solicitud inválida: La imagen supera el máximo de 5 MB", request);
+    }
+
+    // Solo se lanza después de verificar la credencial, así que no permite descubrir qué cuentas
+    // existen ni cuáles están desactivadas sin conocer la contraseña.
+    @ExceptionHandler(CuentaDesactivadaException.class)
+    public ResponseEntity<ApiError> handleCuentaDesactivada(CuentaDesactivadaException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), request);
     }
 
     // AccessDeniedException lanzada por un @PreAuthorize que falla dentro de un controller.

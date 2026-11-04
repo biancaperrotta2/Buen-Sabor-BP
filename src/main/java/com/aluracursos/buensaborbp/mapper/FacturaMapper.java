@@ -15,7 +15,9 @@ import java.util.Objects;
 public interface FacturaMapper {
 
     @Mapping(target = "idFactura", source = "id")
+    @Mapping(target = "idPedido", source = "pedido.id")
     @Mapping(target = "idCliente", source = "pedido.cliente.id_usuario")
+    @Mapping(target = "nombreCliente", expression = "java(factura.getPedido().getCliente() == null ? null : factura.getPedido().getCliente().getNombre() + \" \" + factura.getPedido().getCliente().getApellido())")
     @Mapping(target = "fecha", source = "fechaFacturacion")
     @Mapping(target = "total", source = "totalVenta")
     @Mapping(target = "numeroFactura", source = "numeroComprobante")

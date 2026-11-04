@@ -2,17 +2,18 @@ package com.aluracursos.buensaborbp.controller;
 
 import com.aluracursos.buensaborbp.dto.FacturaBaseResponse;
 import com.aluracursos.buensaborbp.dto.FacturaFullResponse;
+import com.aluracursos.buensaborbp.dto.PageResponse;
 import com.aluracursos.buensaborbp.service.FacturaDocumentRenderer;
 import com.aluracursos.buensaborbp.service.FacturaService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/facturas")
@@ -24,8 +25,10 @@ public class FacturaController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
-    public ResponseEntity<List<FacturaBaseResponse>> listar() {
-        return ResponseEntity.ok(facturaService.mostrarTodasLasFacturas());
+    public ResponseEntity<PageResponse<FacturaBaseResponse>> listar(
+            @RequestParam(required = false, defaultValue = "") String busqueda,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(facturaService.mostrarTodasLasFacturas(busqueda, pageable));
     }
 
     @GetMapping("/{id}")

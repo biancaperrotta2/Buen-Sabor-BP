@@ -5,7 +5,9 @@ import java.time.LocalDate;
 
 public record FacturaBaseResponse(
     Long idFactura,
+    Long idPedido,
     Long idCliente,
+    String nombreCliente,
     LocalDate fecha,
     BigDecimal total,
     String numeroFactura

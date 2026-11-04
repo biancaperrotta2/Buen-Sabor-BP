@@ -13,6 +13,11 @@ public class Empleado extends Usuario {
     @Builder.Default
     @Column(nullable = false)
     private Boolean activo = true;
+
+    @Override
+    public boolean estaActivo() {
+        return !Boolean.FALSE.equals(activo);
+    }
 }
 
 

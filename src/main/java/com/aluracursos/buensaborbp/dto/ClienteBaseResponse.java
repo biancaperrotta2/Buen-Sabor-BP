@@ -10,5 +10,6 @@ public record ClienteBaseResponse(
     ImagenUsuarioResponse fotoPerfilCliente,
     String email,
     String telefono,
+    Boolean activo,
     List<PedidoBaseResponse> pedidos
 ) {}

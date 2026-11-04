@@ -2,9 +2,13 @@ package com.aluracursos.buensaborbp.controller;
 
 import com.aluracursos.buensaborbp.dto.Agrupacion;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
+import com.aluracursos.buensaborbp.dto.ArticuloStockResponse;
+import com.aluracursos.buensaborbp.dto.CategoriaStock;
 import com.aluracursos.buensaborbp.dto.IngresoPeriodoResponse;
+import com.aluracursos.buensaborbp.dto.NivelStock;
 import com.aluracursos.buensaborbp.dto.OrdenesPorClienteResponse;
 import com.aluracursos.buensaborbp.dto.RankingProductoResponse;
+import com.aluracursos.buensaborbp.dto.ResumenIngresosResponse;
 import com.aluracursos.buensaborbp.service.ReporteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -50,5 +54,19 @@ public class ReporteController {
     @GetMapping("/stock-bajo")
     public ResponseEntity<List<ArticuloInsumoBaseResponse>> stockBajo() {
         return ResponseEntity.ok(reporteService.stockBajoMinimo());
+    }
+
+    @GetMapping("/stock")
+    public ResponseEntity<List<ArticuloStockResponse>> stock(
+            @RequestParam CategoriaStock categoria,
+            @RequestParam NivelStock nivel) {
+        return ResponseEntity.ok(reporteService.stockPorNivel(categoria, nivel));
+    }
+
+    @GetMapping("/resumen-ingresos")
+    public ResponseEntity<ResumenIngresosResponse> resumenIngresos(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reporteService.resumenIngresos(desde, hasta));
     }
 }

@@ -15,5 +15,6 @@ public record ArticuloInsumoFullResponse(
     Boolean esParaElaborar,
     Boolean activo,
     CategoriaFullResponse categoria,
-    UnidadMedidaResponse unidadMedida
+    UnidadMedidaResponse unidadMedida,
+    String imagenUrl
 ) {}

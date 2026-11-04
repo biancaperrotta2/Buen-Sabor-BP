@@ -3,16 +3,22 @@ package com.aluracursos.buensaborbp.service;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoRequest;
+import com.aluracursos.buensaborbp.dto.PageResponse;
+import com.aluracursos.buensaborbp.dto.UsoInsumoResponse;
+import com.aluracursos.buensaborbp.dto.InsumoMenuResponse;
 import com.aluracursos.buensaborbp.entity.ArticuloInsumo;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface ArticuloInsumoService extends BaseService<ArticuloInsumo, Long> {
-    List<ArticuloInsumoBaseResponse> getAll();
+    PageResponse<ArticuloInsumoBaseResponse> getAll(String busqueda, Pageable pageable);
     ArticuloInsumoFullResponse getById(Long id);
     ArticuloInsumoFullResponse crearArticuloInsumo(ArticuloInsumoRequest request);
     ArticuloInsumoFullResponse update(Long id, ArticuloInsumoRequest request);
     void delete(Long id);
     List<ArticuloInsumoBaseResponse> getActivos();
+    UsoInsumoResponse obtenerUso(Long id);
+    List<InsumoMenuResponse> getVendibles();
     
     // MÉTODOS DE LÓGICA DE NEGOCIO QUE AGREGAMOS:
     void reservarStock(Long id, double cantidad, String articuloNombre);

@@ -10,9 +10,11 @@ import java.util.List;
 @Mapper(componentModel = "spring", uses = {CiudadMapper.class})
 public interface DomicilioMapper {
     @Mapping(source = "ciudad.nombre", target = "ciudad")
+    @Mapping(source = "ciudad.costoEnvio", target = "costoEnvio")
     DomicilioBaseResponse toBaseResponse(Domicilio entity);
 
     @Mapping(source = "ciudad.nombre", target = "ciudad")
+    @Mapping(source = "ciudad.costoEnvio", target = "costoEnvio")
     @Mapping(target = "departamento", source = "nroDepto")
     DomicilioFullResponse toFullResponse(Domicilio entity);
 

@@ -1,6 +1,7 @@
 package com.aluracursos.buensaborbp.mapper;
 
 import com.aluracursos.buensaborbp.dto.PedidoBaseResponse;
+import com.aluracursos.buensaborbp.dto.PedidoCajaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoCocinaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
@@ -21,20 +22,21 @@ public interface PedidoMapper {
     // Para el Cliente (Mis Órdenes)
     @Mapping(target = "estadoPedido", source = "estado")
     @Mapping(target = "detalles", source = "detallePedidos")
+    @Mapping(target = "idFactura", source = "factura.id")
     PedidoBaseResponse toBaseResponse(Pedido pedido);
 
     List<PedidoBaseResponse> toBaseResponseList(List<Pedido> pedidos);
 
     // Para el Cocinero (Pantalla de Cocina)
     @Mapping(target = "estadoPedido", source = "estado")
-    @Mapping(target = "cliente", expression = "java(pedido.getCliente() == null ? null : new com.aluracursos.buensaborbp.dto.ClienteBaseResponse(pedido.getCliente().getId_usuario(), pedido.getCliente().getNombre(), pedido.getCliente().getApellido(), null, pedido.getCliente().getEmail(), pedido.getCliente().getTelefono(), null))")
+    @Mapping(target = "cliente", expression = "java(pedido.getCliente() == null ? null : new com.aluracursos.buensaborbp.dto.ClienteBaseResponse(pedido.getCliente().getId_usuario(), pedido.getCliente().getNombre(), pedido.getCliente().getApellido(), null, pedido.getCliente().getEmail(), pedido.getCliente().getTelefono(), null, null))")
     PedidoCocinaResponse toCocinaResponse(Pedido pedido);
 
     List<PedidoCocinaResponse> toCocinaResponseList(List<Pedido> pedidos);
 
     // Detalle completo
     @Mapping(target = "estadoPedido", source = "estado")
-    @Mapping(target = "cliente", expression = "java(pedido.getCliente() == null ? null : new com.aluracursos.buensaborbp.dto.ClienteBaseResponse(pedido.getCliente().getId_usuario(), pedido.getCliente().getNombre(), pedido.getCliente().getApellido(), null, pedido.getCliente().getEmail(), pedido.getCliente().getTelefono(), null))")
+    @Mapping(target = "cliente", expression = "java(pedido.getCliente() == null ? null : new com.aluracursos.buensaborbp.dto.ClienteBaseResponse(pedido.getCliente().getId_usuario(), pedido.getCliente().getNombre(), pedido.getCliente().getApellido(), null, pedido.getCliente().getEmail(), pedido.getCliente().getTelefono(), null, null))")
     @Mapping(target = "repartidor", expression = "java(pedido.getRepartidor() == null ? null : new com.aluracursos.buensaborbp.dto.RepartidorResponse(pedido.getRepartidor().getId_usuario(), pedido.getRepartidor().getNombre(), pedido.getRepartidor().getApellido()))")
     PedidoFullResponse toFullResponse(Pedido pedido);
 
@@ -43,4 +45,11 @@ public interface PedidoMapper {
     PedidoEntregaResponse toEntregaResponse(Pedido pedido);
 
     List<PedidoEntregaResponse> toEntregaResponseList(List<Pedido> pedidos);
+
+    // Para el Cajero (pedidos por aceptar / listos para retirar en el mostrador)
+    @Mapping(target = "estadoPedido", source = "estado")
+    @Mapping(target = "cliente", expression = "java(pedido.getCliente() == null ? null : new com.aluracursos.buensaborbp.dto.ClienteBaseResponse(pedido.getCliente().getId_usuario(), pedido.getCliente().getNombre(), pedido.getCliente().getApellido(), null, pedido.getCliente().getEmail(), pedido.getCliente().getTelefono(), null, null))")
+    PedidoCajaResponse toCajaResponse(Pedido pedido);
+
+    List<PedidoCajaResponse> toCajaResponseList(List<Pedido> pedidos);
 }

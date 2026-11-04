@@ -4,8 +4,9 @@ import com.aluracursos.buensaborbp.entity.Empleado;
 import com.aluracursos.buensaborbp.dto.EmpleadoBaseResponse;
 import com.aluracursos.buensaborbp.dto.EmpleadoFullResponse;
 import com.aluracursos.buensaborbp.dto.EmpleadoRequest;
-import java.util.List;
+import com.aluracursos.buensaborbp.dto.PageResponse;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import com.aluracursos.buensaborbp.repository.EmpleadoRepository;
 import com.aluracursos.buensaborbp.mapper.EmpleadoMapper;
@@ -36,9 +37,9 @@ public class EmpleadoServiceImpl extends BaseServiceImpl<Empleado, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<EmpleadoBaseResponse> mostrarEmpleados() {
-        List<Empleado> empleados = empleadoRepository.findAll();
-        return empleadoMapper.toBaseResponseList(empleados);
+    public PageResponse<EmpleadoBaseResponse> mostrarEmpleados(String busqueda, Pageable pageable) {
+        String filtro = busqueda != null ? busqueda.trim() : "";
+        return PageResponse.de(empleadoRepository.buscar(filtro, pageable), empleadoMapper::toBaseResponse);
     }
     
     @Override
@@ -68,6 +69,14 @@ public class EmpleadoServiceImpl extends BaseServiceImpl<Empleado, Long> impleme
     public void desactivarEmpleado(Long id) {
         Empleado empleado = empleadoRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Empleado no encontrado"));
         empleado.setActivo(false);
+        empleadoRepository.save(empleado);
+    }
+
+    @Override
+    @Transactional
+    public void reactivarEmpleado(Long id) {
+        Empleado empleado = empleadoRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Empleado no encontrado"));
+        empleado.setActivo(true);
         empleadoRepository.save(empleado);
     }
 }

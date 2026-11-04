@@ -1,5 +1,6 @@
 package com.aluracursos.buensaborbp.controller;
 
+import com.aluracursos.buensaborbp.service.PagoInexistenteException;
 import com.aluracursos.buensaborbp.service.PedidoService;
 import com.mercadopago.exceptions.MPInvalidWebhookSignatureException;
 import com.mercadopago.webhook.WebhookSignatureValidator;
@@ -51,7 +52,14 @@ public class WebhookMercadoPagoController {
 
         // Solo nos interesan las notificaciones de pagos; el resto se reconoce con 200 y se ignora.
         if ("payment".equals(type) && dataId != null) {
-            pedidoService.procesarNotificacionPago(Long.valueOf(dataId));
+            try {
+                pedidoService.procesarNotificacionPago(Long.valueOf(dataId));
+            } catch (PagoInexistenteException e) {
+                // Un aviso firmado por MP pero de un pago que no existe (es lo que manda "Simular
+                // notificación" del panel): se reconoce con 200 para que no lo reintente. Cualquier
+                // otra falla (MP caído, pedido inexistente) sigue devolviendo error y MP reintenta.
+                log.info("Aviso de Mercado Pago de un pago inexistente (data.id={}), probablemente una simulación del panel", dataId);
+            }
         }
 
         return ResponseEntity.ok().build();

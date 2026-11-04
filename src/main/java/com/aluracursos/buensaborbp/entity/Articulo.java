@@ -121,6 +121,19 @@ public abstract class Articulo {
         return cantidad * getUnidadMedidaEnum().getFactor();
     }
 
+    // Inversa de convertirACantidadBase: de la unidad base (siempre KG/L/UNIDAD, como se
+    // almacena el stock) a la unidad que el artículo tiene seleccionada actualmente (la que ve
+    // el admin, ej. GR). Usada para mostrar/recibir stockActual/Minimo/Maximo en la unidad
+    // elegida en vez de siempre en la base — ver ArticuloInsumoServiceImpl.
+    public double convertirDesdeCantidadBase(double cantidadBase) {
+        if (getUnidadMedidaEnum() == null) {
+            throw new IllegalStateException("La unidad de medida no está definida para: " + this.getNombre());
+        }
+        // Redondeo a 6 decimales: 3.8 kg / 0.001 da 3799.9999999999995 en double, y eso se mostraba
+        // tal cual en pantalla (stock de un insumo en gramos).
+        return Math.round(cantidadBase / getUnidadMedidaEnum().getFactor() * 1_000_000d) / 1_000_000d;
+    }
+
     //metodos abstractos
     public abstract void reservarStock(double cantidad, String articuloPadreNombre);
 

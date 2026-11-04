@@ -22,6 +22,12 @@ public record ArticuloInsumoRequest(
 
     Float margen,
 
+    // Se interpreta en la unidad de este mismo request y se guarda en la unidad base
+    // (ver ArticuloInsumoServiceImpl.crearArticuloInsumo/update).
+    @NotNull(message = "El stock actual es obligatorio")
+    @PositiveOrZero(message = "El stock actual no puede ser negativo")
+    Double stockActual,
+
     @NotNull(message = "El stock mínimo es obligatorio")
     @PositiveOrZero(message = "El stock mínimo no puede ser negativo")
     Double stockMinimo,

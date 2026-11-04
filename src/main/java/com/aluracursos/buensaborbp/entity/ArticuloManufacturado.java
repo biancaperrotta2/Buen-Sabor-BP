@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,8 +42,54 @@ public class ArticuloManufacturado extends Articulo{
     @OneToMany(mappedBy = "articuloManufacturado", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ArticuloManufacturadoDetalle> articuloManufacturadoDetalles = new ArrayList<>();
 
+    // Lotes preparados (solo semielaborados). El stock actual de un semielaborado no se edita a
+    // mano: es la suma de lo que queda en los lotes vigentes (ver actualizarStockDesdeExistencias).
+    @Builder.Default
+    @OneToMany(mappedBy = "semielaborado", cascade = CascadeType.ALL, orphanRemoval = true)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private List<ExistenciaSemielaborado> existencias = new ArrayList<>();
+
     public Double getStockDisponible() {
         return stockActual - stockReservado;
+    }
+
+    // Recalcula stockActual como la suma de lo que queda en los lotes vigentes (no vencidos ni
+    // descartados). Se llama antes de reservar/confirmar y cada vez que cambian los lotes, así un
+    // lote que venció deja de contar aunque nadie lo haya tocado.
+    public void actualizarStockDesdeExistencias(LocalDate hoy) {
+        if (!Boolean.TRUE.equals(esSemielaborado)) return;
+        if (existencias == null) {
+            existencias = new ArrayList<>();
+        }
+        this.stockActual = existencias.stream()
+                .filter(e -> e.estaVigente(hoy))
+                .mapToDouble(ExistenciaSemielaborado::getCantidadRestante)
+                .sum();
+    }
+
+    // Descuenta de los lotes vigentes, primero el que vence antes (y entre iguales, el más viejo).
+    private void consumirDeExistencias(double cantidadBase, LocalDate hoy) {
+        double restante = cantidadBase;
+        List<ExistenciaSemielaborado> vigentes = (existencias == null ? List.<ExistenciaSemielaborado>of() : existencias).stream()
+                .filter(e -> e.estaVigente(hoy))
+                .sorted(java.util.Comparator.comparing(ExistenciaSemielaborado::getFechaVencimiento)
+                        .thenComparing(ExistenciaSemielaborado::getFechaElaboracion))
+                .toList();
+        for (ExistenciaSemielaborado lote : vigentes) {
+            if (restante <= 0) break;
+            double usado = Math.min(lote.getCantidadRestante(), restante);
+            lote.setCantidadRestante(redondear(lote.getCantidadRestante() - usado));
+            restante = redondear(restante - usado);
+        }
+        if (restante > 0) {
+            throw new StockInsuficienteException("No hay lotes vigentes suficientes del semielaborado " + getNombre()
+                    + " (faltan " + restante + "). Puede que algún lote haya vencido.");
+        }
+    }
+
+    private static double redondear(double valor) {
+        return Math.round(valor * 1_000_000d) / 1_000_000d;
     }
 
     public boolean tieneStockMinimo() {
@@ -108,6 +155,7 @@ public class ArticuloManufacturado extends Articulo{
     public void reservarStock(double cantidad, String articuloPadreNombre) {
         if (Boolean.TRUE.equals(esSemielaborado)) {
             double cantidadBase = convertirACantidadBase(cantidad);
+            actualizarStockDesdeExistencias(LocalDate.now());
             if (getStockDisponible() >= cantidadBase) {
                 this.stockReservado += cantidadBase;
             } else {
@@ -140,8 +188,10 @@ public class ArticuloManufacturado extends Articulo{
             if (this.stockReservado < cantidadBase) {
                 throw new IllegalStateException("No hay suficiente stock reservado para confirmar.");
             }
-            this.stockActual -= cantidadBase;
+            LocalDate hoy = LocalDate.now();
+            consumirDeExistencias(cantidadBase, hoy);
             this.stockReservado -= cantidadBase;
+            actualizarStockDesdeExistencias(hoy);
             return;
         }
         for (ArticuloManufacturadoDetalle detalle : this.getArticuloManufacturadoDetalles()) {

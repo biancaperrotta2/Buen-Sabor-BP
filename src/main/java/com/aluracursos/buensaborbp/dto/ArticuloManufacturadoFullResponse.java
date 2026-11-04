@@ -18,7 +18,11 @@ public record ArticuloManufacturadoFullResponse(
         String preparacion,
         CategoriaFullResponse categoria,
         List<ImagenArticuloResponse> imagenes,
-        List<ArticuloManufacturadoDetalleResponse> detalles
+        List<ArticuloManufacturadoDetalleResponse> detalles,
+        // Para semielaborados (detalle y formulario): su unidad (Kilos/Litros/Unidad) y si está activo.
+        String unidadMedida,
+        String unidadAbreviatura,
+        Boolean activo
 ) {
 }
 

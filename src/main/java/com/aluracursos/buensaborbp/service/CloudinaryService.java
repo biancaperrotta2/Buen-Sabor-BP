@@ -37,7 +37,7 @@ public class CloudinaryService {
         try {
             Map<?, ?> resultado = cloudinary.uploader().upload(
                     archivo.getBytes(), 
-                    ObjectUtils.asMap("resource_type", "auto")
+                    ObjectUtils.asMap("resource_type", "image")
             );
             
             String url = resultado.get("secure_url").toString();
@@ -69,7 +69,7 @@ public class CloudinaryService {
                 return false;
             }
 
-            Map<?, ?> resultado = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            Map<?, ?> resultado = cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("invalidate", true));
             String resultadoEliminacion = resultado.get("result").toString();
             
             boolean eliminado = "ok".equals(resultadoEliminacion);

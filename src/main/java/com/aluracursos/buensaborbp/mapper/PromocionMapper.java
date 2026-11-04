@@ -26,5 +26,6 @@ public interface PromocionMapper {
     // Mapeo para los detalles individuales
     @Mapping(target = "idArticulo", source = "articulos.id")
     @Mapping(target = "nombreArticulo", source = "articulos.nombre")
+    @Mapping(target = "precioUnitario", source = "articulos.precioVenta")
     PromocionDetalleResponse toDetalleResponse(PromocionDetalle detalle);
 }

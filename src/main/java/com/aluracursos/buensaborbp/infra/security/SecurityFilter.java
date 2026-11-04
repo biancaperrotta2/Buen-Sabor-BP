@@ -1,5 +1,6 @@
 package com.aluracursos.buensaborbp.infra.security;
 
+import com.aluracursos.buensaborbp.entity.Usuario;
 import com.aluracursos.buensaborbp.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -32,9 +32,10 @@ public class SecurityFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 String username = tokenService.getSubject(token);
-                UserDetails usuario = usuarioRepository.findByUsuario(username).orElse(null);
+                Usuario usuario = usuarioRepository.findByUsuario(username).orElse(null);
 
-                if (usuario != null) {
+                // Una cuenta desactivada pierde el acceso aunque su token siga vigente.
+                if (usuario != null && usuario.estaActivo()) {
                     var authentication = new UsernamePasswordAuthenticationToken(
                             usuario, null, usuario.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);

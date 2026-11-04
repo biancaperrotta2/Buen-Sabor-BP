@@ -3,6 +3,7 @@ package com.aluracursos.buensaborbp.service;
 import com.aluracursos.buensaborbp.entity.Pedido;
 import com.aluracursos.buensaborbp.entity.Enums.Estado;
 import com.aluracursos.buensaborbp.dto.PedidoBaseResponse;
+import com.aluracursos.buensaborbp.dto.PedidoCajaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoCocinaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
@@ -25,6 +26,7 @@ public interface PedidoService extends BaseService<Pedido, Long> {
 
     // Llamado por el webhook: consulta el pago en Mercado Pago y actualiza el estado del pedido.
     void procesarNotificacionPago(Long paymentId);
+    com.aluracursos.buensaborbp.dto.VerificacionPagoResponse verificarPago(Long pedidoId);
 
     // --- Flujo de repartidor ---
 
@@ -38,4 +40,17 @@ public interface PedidoService extends BaseService<Pedido, Long> {
 
     // Cierra la entrega: EN_CAMINO -> ENTREGADO. Solo el repartidor asignado (o un admin).
     PedidoFullResponse marcarEntregado(Long pedidoId);
+
+    // --- Flujo de cajero ---
+
+    // Pedidos recién ingresados que el cajero todavía no aceptó (cualquier tipo de envío).
+    List<PedidoCajaResponse> listarPendientes();
+
+    // Pedidos PREPARADO + TAKE_AWAY: listos para entregar y cobrar en el mostrador.
+    List<PedidoCajaResponse> listarParaEntregarEnLocal();
+
+    // Confirma que se cobró en efectivo (cajero en el mostrador o repartidor en la puerta).
+    // Paso explícito y separado de marcar la entrega; un pedido con Mercado Pago nunca pasa
+    // por acá, ese pago lo confirma el webhook. Si el pedido ya está ENTREGADO, factura sola.
+    PedidoFullResponse confirmarCobroEfectivo(Long pedidoId);
 }

@@ -18,6 +18,8 @@ public interface CategoriaMapper {
     @Mapping(target = "subcategorias", qualifiedByName = "categoriaBaseSinPadre")
     CategoriaFullResponse toFullResponse(Categoria entity);
 
+    // El tipo lo resuelve el service (default PRODUCTO, o heredado del padre).
+    @Mapping(target = "tipo", ignore = true)
     Categoria toEntity(CategoriaRequest request);
 
     List<CategoriaBaseResponse> toBaseResponseList(List<Categoria> entities);

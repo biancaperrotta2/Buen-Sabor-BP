@@ -8,6 +8,7 @@ import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {ImagenUsuarioMapper.class})
 public interface EmpleadoMapper {
+    @Mapping(target = "id", source = "id_usuario")
     @Mapping(target = "cargo", source = "rol")
     EmpleadoBaseResponse toBaseResponse(Empleado entity);
 

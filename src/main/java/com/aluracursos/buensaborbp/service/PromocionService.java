@@ -2,9 +2,11 @@ package com.aluracursos.buensaborbp.service;
 
 import java.util.List;
 
-import com.aluracursos.buensaborbp.dto.PromocionRequest;
+import org.springframework.data.domain.Pageable;
+
 import com.aluracursos.buensaborbp.dto.PromocionRequest;
 import com.aluracursos.buensaborbp.entity.Promocion;
+import com.aluracursos.buensaborbp.dto.PageResponse;
 import com.aluracursos.buensaborbp.dto.PromocionBaseResponse;
 import com.aluracursos.buensaborbp.dto.PromocionFullResponse;
 
@@ -38,6 +40,12 @@ public interface PromocionService extends BaseService<Promocion, Long> {
      * Lista todas las promociones (habilitadas o no) para la tabla del Admin.
      */
     List<PromocionFullResponse> listarTodoParaAdmin();
+
+    /**
+     * Igual que listarTodoParaAdmin pero paginado y con búsqueda, para la tabla del Admin
+     * (mismo patrón de busqueda+Pageable que Empleados/Clientes/Insumos/Productos/Categorías).
+     */
+    PageResponse<PromocionBaseResponse> listarAdmin(String busqueda, Pageable pageable);
 
     /**
      * Cambia el estado de habilitación (Baja lógica) de la promoción.

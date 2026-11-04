@@ -11,6 +11,9 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface CategoriaPadreMapper {
+    // Las subcategorías del padre van sin su propio padre: si no, hija -> padre -> subcategorías ->
+    // padre... no termina nunca (StackOverflowError en cualquier categoría con subcategorías).
+    @Mapping(target = "subcategorias", qualifiedByName = "categoriaBaseSinPadre")
     CategoriaPadreDto toResponse(Categoria entity);
 
     List<CategoriaPadreDto> toDTOResponseList(List<Categoria> entities); //ver si hace falta ??

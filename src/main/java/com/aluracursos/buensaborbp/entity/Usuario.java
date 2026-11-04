@@ -52,8 +52,13 @@ public class Usuario implements UserDetails {
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ImagenUsuario> imagenes = new ArrayList<>();
 
-    // Para autenticación OAuth2
+    // Para autenticación OAuth2 (Google, verificado directo con google-api-client)
     private String oauth2Id;
+
+    // Id del usuario espejo en Firebase Authentication (usado solo para la
+    // recuperación de contraseña: Firebase emite un idToken luego del reseteo,
+    // y este campo permite resolver a qué Usuario de nuestra base corresponde).
+    private String firebaseUid;
 
     // --- UserDetails (Spring Security) ---
 
@@ -84,6 +89,13 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() {
+        return true;
+    }
+
+    // Empleado y Cliente lo sobrescriben con su marca "activo". No se usa isEnabled() a propósito:
+    // Spring lo evalúa antes de validar la contraseña y respondería distinto para una cuenta
+    // desactivada, lo que permitiría descubrir cuentas sin conocer la clave.
+    public boolean estaActivo() {
         return true;
     }
 }

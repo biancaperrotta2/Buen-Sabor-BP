@@ -2,15 +2,22 @@ package com.aluracursos.buensaborbp.service;
 
 import com.aluracursos.buensaborbp.dto.Agrupacion;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
+import com.aluracursos.buensaborbp.dto.ArticuloStockResponse;
+import com.aluracursos.buensaborbp.dto.CategoriaStock;
 import com.aluracursos.buensaborbp.dto.IngresoPeriodoResponse;
+import com.aluracursos.buensaborbp.dto.NivelStock;
 import com.aluracursos.buensaborbp.dto.OrdenesPorClienteResponse;
 import com.aluracursos.buensaborbp.dto.RankingProductoResponse;
+import com.aluracursos.buensaborbp.dto.ResumenIngresosResponse;
+import com.aluracursos.buensaborbp.entity.ArticuloInsumo;
+import com.aluracursos.buensaborbp.entity.ArticuloManufacturado;
 import com.aluracursos.buensaborbp.entity.Cliente;
 import com.aluracursos.buensaborbp.entity.DetallePedido;
 import com.aluracursos.buensaborbp.entity.Enums.Estado;
 import com.aluracursos.buensaborbp.entity.Pedido;
 import com.aluracursos.buensaborbp.mapper.ArticuloInsumoMapper;
 import com.aluracursos.buensaborbp.repository.ArticuloInsumoRepository;
+import com.aluracursos.buensaborbp.repository.ArticuloManufacturadoRepository;
 import com.aluracursos.buensaborbp.repository.PedidoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,13 +39,16 @@ public class ReporteServiceImpl implements ReporteService {
 
     private final PedidoRepository pedidoRepository;
     private final ArticuloInsumoRepository articuloInsumoRepository;
+    private final ArticuloManufacturadoRepository articuloManufacturadoRepository;
     private final ArticuloInsumoMapper articuloInsumoMapper;
 
     public ReporteServiceImpl(PedidoRepository pedidoRepository,
                                ArticuloInsumoRepository articuloInsumoRepository,
+                               ArticuloManufacturadoRepository articuloManufacturadoRepository,
                                ArticuloInsumoMapper articuloInsumoMapper) {
         this.pedidoRepository = pedidoRepository;
         this.articuloInsumoRepository = articuloInsumoRepository;
+        this.articuloManufacturadoRepository = articuloManufacturadoRepository;
         this.articuloInsumoMapper = articuloInsumoMapper;
     }
 
@@ -122,6 +132,47 @@ public class ReporteServiceImpl implements ReporteService {
     @Transactional(readOnly = true)
     public List<ArticuloInsumoBaseResponse> stockBajoMinimo() {
         return articuloInsumoMapper.toBaseResponseList(articuloInsumoRepository.findBajoStock());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ArticuloStockResponse> stockPorNivel(CategoriaStock categoria, NivelStock nivel) {
+        List<ArticuloStockResponse> articulos = categoria == CategoriaStock.INSUMOS
+                ? articuloInsumoRepository.findByActivoTrue().stream()
+                        .map(this::aArticuloStockResponse)
+                        .toList()
+                : articuloManufacturadoRepository.findByActivoTrueAndEsSemielaboradoTrue().stream()
+                        .map(this::aArticuloStockResponse)
+                        .toList();
+
+        return articulos.stream().filter(a -> a.nivel() == nivel).toList();
+    }
+
+    private ArticuloStockResponse aArticuloStockResponse(ArticuloInsumo insumo) {
+        return new ArticuloStockResponse(insumo.getId(), insumo.getNombre(), insumo.getStockActual(),
+                insumo.getStockMinimo(), insumo.getStockMaximo(),
+                NivelStock.de(insumo.getStockActual(), insumo.getStockMinimo(), insumo.getStockMaximo()),
+                CategoriaStock.INSUMOS);
+    }
+
+    private ArticuloStockResponse aArticuloStockResponse(ArticuloManufacturado semielaborado) {
+        return new ArticuloStockResponse(semielaborado.getId(), semielaborado.getNombre(), semielaborado.getStockActual(),
+                semielaborado.getStockMinimo(), semielaborado.getStockMaximo(),
+                NivelStock.de(semielaborado.getStockActual(), semielaborado.getStockMinimo(), semielaborado.getStockMaximo()),
+                CategoriaStock.SEMIELABORADOS);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenIngresosResponse resumenIngresos(LocalDate desde, LocalDate hasta) {
+        validarRango(desde, hasta);
+        List<Pedido> pedidos = pedidoRepository.findByFechaPedidoBetweenAndEstado(desde, hasta, Estado.ENTREGADO);
+
+        BigDecimal total = pedidos.stream()
+                .map(p -> p.getTotal() != null ? p.getTotal() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new ResumenIngresosResponse(pedidos.size(), total);
     }
 
     private void validarRango(LocalDate desde, LocalDate hasta) {

@@ -7,5 +7,6 @@ public record PromocionBaseResponse(
     String nombre, // nombrePromocion
     BigDecimal precioVenta, // precioPromocional
     String descripcionDescuento,
-    String urlImagen 
+    String urlImagen,
+    Boolean activo
 ) {}

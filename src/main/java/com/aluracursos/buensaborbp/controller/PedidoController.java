@@ -1,7 +1,9 @@
 package com.aluracursos.buensaborbp.controller;
 
+import com.aluracursos.buensaborbp.dto.VerificacionPagoResponse;
 import com.aluracursos.buensaborbp.dto.CambiarEstadoPedidoRequest;
 import com.aluracursos.buensaborbp.dto.PedidoBaseResponse;
+import com.aluracursos.buensaborbp.dto.PedidoCajaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoCocinaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
@@ -50,6 +52,20 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarParaCocina());
     }
 
+    // --- Caja ---
+
+    @GetMapping("/pendientes")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+    public ResponseEntity<List<PedidoCajaResponse>> pendientes() {
+        return ResponseEntity.ok(pedidoService.listarPendientes());
+    }
+
+    @GetMapping("/para-entregar")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+    public ResponseEntity<List<PedidoCajaResponse>> paraEntregarEnLocal() {
+        return ResponseEntity.ok(pedidoService.listarParaEntregarEnLocal());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','CAJERO','COCINERO','REPARTIDOR') or @pedidoSecurity.esDelCliente(authentication, #id)")
     public ResponseEntity<PedidoFullResponse> buscarPorId(@PathVariable Long id) {
@@ -71,6 +87,14 @@ public class PedidoController {
     @PreAuthorize("hasRole('ADMIN') or @pedidoSecurity.esDelCliente(authentication, #id)")
     public ResponseEntity<PreferenciaPagoResponse> crearPreferenciaPago(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoService.crearPreferenciaPago(id));
+    }
+
+    // Le pregunta a Mercado Pago cómo salió el pago del pedido y lo actualiza (no depende de que
+    // llegue el webhook). Lo usan el cliente al volver del checkout y el cajero desde Caja.
+    @PostMapping("/{id}/pago/verificar")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO') or @pedidoSecurity.esDelCliente(authentication, #id)")
+    public ResponseEntity<VerificacionPagoResponse> verificarPago(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.verificarPago(id));
     }
 
     // --- Flujo de repartidor ---
@@ -100,5 +124,13 @@ public class PedidoController {
     @PreAuthorize("hasRole('ADMIN') or @pedidoSecurity.esDelRepartidor(authentication, #id)")
     public ResponseEntity<PedidoFullResponse> marcarEntregado(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoService.marcarEntregado(id));
+    }
+
+    // Paso explícito de "cobré el efectivo", separado de marcar la entrega: lo confirma el
+    // cajero (retiro en local) o el repartidor dueño del envío (delivery, cobra en la puerta).
+    @PatchMapping("/{id}/pago/confirmar")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO') or @pedidoSecurity.esDelRepartidor(authentication, #id)")
+    public ResponseEntity<PedidoFullResponse> confirmarCobroEfectivo(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.confirmarCobroEfectivo(id));
     }
 }

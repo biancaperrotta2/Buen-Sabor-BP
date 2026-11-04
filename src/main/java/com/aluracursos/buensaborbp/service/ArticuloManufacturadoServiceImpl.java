@@ -9,11 +9,14 @@ import com.aluracursos.buensaborbp.dto.ArticuloManufacturadoDetalleRequest;
 import com.aluracursos.buensaborbp.dto.ArticuloManufacturadoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloManufacturadoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloManufacturadoRequest;
+import com.aluracursos.buensaborbp.dto.PageResponse;
+import org.springframework.data.domain.Pageable;
 import com.aluracursos.buensaborbp.entity.Articulo;
 import com.aluracursos.buensaborbp.entity.ArticuloInsumo;
 import com.aluracursos.buensaborbp.entity.ArticuloManufacturado;
 import com.aluracursos.buensaborbp.entity.ArticuloManufacturadoDetalle;
 import com.aluracursos.buensaborbp.entity.Categoria;
+import com.aluracursos.buensaborbp.entity.Enums.TipoCategoria;
 import com.aluracursos.buensaborbp.mapper.ArticuloManufacturadoMapper;
 import com.aluracursos.buensaborbp.repository.ArticuloManufacturadoRepository;
 import com.aluracursos.buensaborbp.repository.ArticuloRepository;
@@ -30,17 +33,23 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
     private final ArticuloManufacturadoMapper manufacturadoMapper;
     private final CategoriaRepository categoriaRepository;
     private final ArticuloRepository articuloRepository;
+    private final ImagenesArticulo imagenesArticulo;
+    private final RecalculoCostoProductos recalculoCostoProductos;
 
     public ArticuloManufacturadoServiceImpl(
             ArticuloManufacturadoRepository manufacturadoRepository,
             ArticuloManufacturadoMapper manufacturadoMapper,
             CategoriaRepository categoriaRepository,
-            ArticuloRepository articuloRepository) {
+            ArticuloRepository articuloRepository,
+            ImagenesArticulo imagenesArticulo,
+            RecalculoCostoProductos recalculoCostoProductos) {
         super(manufacturadoRepository);
         this.manufacturadoRepository = manufacturadoRepository;
         this.manufacturadoMapper = manufacturadoMapper;
         this.categoriaRepository = categoriaRepository;
         this.articuloRepository = articuloRepository;
+        this.imagenesArticulo = imagenesArticulo;
+        this.recalculoCostoProductos = recalculoCostoProductos;
     }
 
     /**
@@ -81,6 +90,12 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
 
             boolean esInsumo = componente instanceof ArticuloInsumo;
             boolean esSemielaboradoValido = componente instanceof ArticuloManufacturado m && Boolean.TRUE.equals(m.getEsSemielaborado());
+            // La receta de un semielaborado lleva solo insumos (enunciado #23): al cargar un lote
+            // se descuentan de ellos.
+            if (Boolean.TRUE.equals(manufacturado.getEsSemielaborado()) && !esInsumo) {
+                throw new IllegalArgumentException("El ingrediente '" + componente.getNombre()
+                        + "' no es un insumo: la receta de un semielaborado solo puede llevar insumos");
+            }
             if (!esInsumo && !esSemielaboradoValido) {
                 throw new IllegalArgumentException("El artículo '" + componente.getNombre()
                         + "' no puede usarse como ingrediente: debe ser un insumo o un producto marcado como semielaborado");
@@ -108,11 +123,13 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
             if (request.stockMinimo() == null || request.stockMaximo() == null) {
                 throw new IllegalArgumentException("Un semielaborado necesita stock mínimo y máximo");
             }
-            // Si no viene stockActual en el request, no lo resetea: preserva el valor que ya
-            // tenía (importante en un update que solo toca precio/descripción, por ejemplo).
-            if (request.stockActual() != null) {
-                manufacturado.setStockActual(request.stockActual());
-            } else if (manufacturado.getStockActual() == null) {
+            if (request.stockMinimo() > request.stockMaximo()) {
+                throw new IllegalArgumentException("El stock mínimo no puede ser mayor que el máximo");
+            }
+            // El stock actual no se toma del request: es la suma de los lotes vigentes (se carga
+            // con "Añadir existencia"). Un semielaborado nuevo arranca en 0.
+            manufacturado.actualizarStockDesdeExistencias(java.time.LocalDate.now());
+            if (manufacturado.getStockActual() == null) {
                 manufacturado.setStockActual(0.0);
             }
             manufacturado.setStockMinimo(request.stockMinimo());
@@ -126,8 +143,30 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
 
     // Un plato final siempre se vende por unidad (no se compra/vende fraccionado, a
     // diferencia de un insumo). Un semielaborado sí puede pesarse/medirse en KG/GR/etc.
+    // Un plato final necesita precio de venta (> 0) y preparación; un semielaborado no se vende,
+    // así que se guarda con precio 0 y la preparación es opcional.
+    private void aplicarPrecioYPreparacion(ArticuloManufacturado manufacturado, ArticuloManufacturadoRequest request) {
+        if (Boolean.TRUE.equals(manufacturado.getEsSemielaborado())) {
+            manufacturado.setPrecioVenta(java.math.BigDecimal.ZERO);
+            manufacturado.setPreparacion(request.preparacion() != null ? request.preparacion() : "");
+            return;
+        }
+        if (request.preparacion() == null || request.preparacion().isBlank()) {
+            throw new IllegalArgumentException("La preparación es obligatoria");
+        }
+        manufacturado.setPreparacion(request.preparacion());
+        manufacturado.calcularPrecioVenta(request.precioVenta());
+    }
+
     private com.aluracursos.buensaborbp.entity.Enums.UnidadMedidaEnum unidadMedidaPara(ArticuloManufacturadoRequest request) {
         if (Boolean.TRUE.equals(request.esSemielaborado()) && request.unidadMedida() != null) {
+            // Solo unidades base (Kilos, Litros, Unidad): su costo se calcula por 1 unidad de su
+            // medida y, como ingrediente de un plato, se interpreta por unidad base. Con Gramos o
+            // Mililitros esos dos números no coincidirían.
+            if (request.unidadMedida().getFactor() != 1.0) {
+                throw new IllegalArgumentException("Un semielaborado se mide en Kilos, Litros o Unidad (no en "
+                        + request.unidadMedida().getDenominacion() + ")");
+            }
             return request.unidadMedida();
         }
         return com.aluracursos.buensaborbp.entity.Enums.UnidadMedidaEnum.UNIDAD;
@@ -146,6 +185,7 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
         ArticuloManufacturado manufacturado = manufacturadoMapper.toEntity(manufacturadoRequest);
         manufacturado.setCategoria(categoria);
         aplicarConfiguracionStock(manufacturado, manufacturadoRequest);
+        validarTipoDeCategoria(manufacturado);
         manufacturado.setUnidadMedidaEnum(unidadMedidaPara(manufacturadoRequest));
         manufacturado.getArticuloManufacturadoDetalles()
                 .addAll(construirDetalles(manufacturadoRequest.articuloManufacturadoDetalles(), manufacturado));
@@ -154,12 +194,23 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
         manufacturado.tiempoEstimadoMinutos(
                 manufacturadoRequest.tiempoEstimado() == null ? 0 : manufacturadoRequest.tiempoEstimado());
 
-        if (manufacturadoRequest.precioVenta() != null) {
-            manufacturado.calcularPrecioVenta(manufacturadoRequest.precioVenta());
-        }
+        aplicarPrecioYPreparacion(manufacturado, manufacturadoRequest);
 
+        // Fotos al final: sincronizar puede borrar archivos de Cloudinary (irreversible), así que
+        // va después de todo lo que puede rechazar el guardado (categoría, costo, precio).
+        imagenesArticulo.sincronizar(manufacturado, manufacturadoRequest.imagenes());
         ArticuloManufacturado saved = manufacturadoRepository.save(manufacturado);
         return manufacturadoMapper.toFullResponse(saved);
+    }
+
+    // Plato final -> categoría de Productos (se ve en el menú); semielaborado -> categoría de
+    // Insumos (es un ingrediente, no se vende solo).
+    private void validarTipoDeCategoria(ArticuloManufacturado manufacturado) {
+        if (manufacturado.getCategoria() == null) return;
+        boolean semielaborado = Boolean.TRUE.equals(manufacturado.getEsSemielaborado());
+        manufacturado.getCategoria().exigirTipo(
+                semielaborado ? TipoCategoria.INSUMO : TipoCategoria.PRODUCTO,
+                semielaborado ? "un semielaborado" : "un producto");
     }
 
     @Override
@@ -169,9 +220,28 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
     }
 
     @Override
+    public PageResponse<ArticuloManufacturadoBaseResponse> getAllAdmin(String busqueda, Pageable pageable) {
+        String filtro = busqueda != null ? busqueda.trim() : "";
+        return PageResponse.de(manufacturadoRepository.buscarProductos(filtro, pageable), manufacturadoMapper::toBaseResponse);
+    }
+
+    @Override
     public Page<ArticuloManufacturadoBaseResponse> getActivos() {
         Page<ArticuloManufacturado> page = manufacturadoRepository.findAllByActivoTrueAndEsSemielaboradoFalse(PageRequest.of(0, 20));
         return page.map(manufacturadoMapper::toBaseResponse);
+    }
+
+    // Tabla de semielaborados. Recalcula el stock de cada uno antes de mostrarlo, para que un lote
+    // que venció desde la última vez deje de contar (y el semáforo de disponibilidad sea real).
+    @Override
+    @Transactional
+    public PageResponse<com.aluracursos.buensaborbp.dto.SemielaboradoAdminResponse> getSemielaboradosAdmin(String busqueda, Pageable pageable) {
+        String filtro = busqueda != null ? busqueda.trim() : "";
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        return PageResponse.de(manufacturadoRepository.buscarSemielaborados(filtro, pageable), semi -> {
+            semi.actualizarStockDesdeExistencias(hoy);
+            return manufacturadoMapper.toSemielaboradoAdmin(semi);
+        });
     }
 
     @Override
@@ -181,9 +251,11 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
     }
 
     @Override
+    @Transactional
     public ArticuloManufacturadoFullResponse getById(Long id) {
         ArticuloManufacturado entity = manufacturadoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encontró el manufacturado con ID: " + id));
+        entity.actualizarStockDesdeExistencias(java.time.LocalDate.now());
         return manufacturadoMapper.toFullResponse(entity);
     }
 
@@ -201,31 +273,46 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
 
         existing.setNombre(request.denominacion());
         existing.setDescripcion(request.descripcion());
-        existing.setPreparacion(request.preparacion());
         aplicarConfiguracionStock(existing, request);
+        validarTipoDeCategoria(existing);
         existing.setUnidadMedidaEnum(unidadMedidaPara(request));
 
-        existing.getArticuloManufacturadoDetalles().clear();
-        existing.getArticuloManufacturadoDetalles()
-                .addAll(construirDetalles(request.articuloManufacturadoDetalles(), existing));
+        // null = "no se tocó la receta": el formulario del admin todavía no edita ingredientes y
+        // antes borraba la receta entera en cada edición.
+        if (request.articuloManufacturadoDetalles() != null) {
+            existing.getArticuloManufacturadoDetalles().clear();
+            existing.getArticuloManufacturadoDetalles()
+                    .addAll(construirDetalles(request.articuloManufacturadoDetalles(), existing));
+        }
 
         existing.calcularPrecioCosto();
         existing.tiempoEstimadoMinutos(request.tiempoEstimado() == null ? 0 : request.tiempoEstimado());
 
-        if (request.precioVenta() != null) {
-            existing.calcularPrecioVenta(request.precioVenta());
-        }
+        aplicarPrecioYPreparacion(existing, request);
 
+        imagenesArticulo.sincronizar(existing, request.imagenes());
         ArticuloManufacturado saved = manufacturadoRepository.save(existing);
+        // Un semielaborado es ingrediente de otros productos: su costo nuevo tiene que llegarles.
+        if (Boolean.TRUE.equals(saved.getEsSemielaborado())) {
+            recalculoCostoProductos.recalcularProductosQueUsan(saved.getId());
+        }
         return manufacturadoMapper.toFullResponse(saved);
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!manufacturadoRepository.existsById(id)) {
-            throw new EntityNotFoundException("No se encontró el manufacturado con ID: " + id);
+        ArticuloManufacturado manufacturado = manufacturadoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró el manufacturado con ID: " + id));
+        // Borrar un semielaborado con lotes vigentes se llevaría puesto ese stock (y los insumos ya
+        // descontados para prepararlo) sin dejar rastro.
+        if (Boolean.TRUE.equals(manufacturado.getEsSemielaborado())) {
+            manufacturado.actualizarStockDesdeExistencias(java.time.LocalDate.now());
+            if (manufacturado.getStockActual() != null && manufacturado.getStockActual() > 0) {
+                throw new IllegalStateException("\"" + manufacturado.getNombre() + "\" todavía tiene stock en lotes ("
+                        + manufacturado.getStockActual() + "). Usalo, borrá los lotes o esperá a que venzan antes de eliminarlo.");
+            }
         }
-        manufacturadoRepository.deleteById(id);
+        manufacturadoRepository.delete(manufacturado);
     }
 }
