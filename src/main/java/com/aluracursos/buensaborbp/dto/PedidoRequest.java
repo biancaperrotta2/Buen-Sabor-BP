@@ -3,6 +3,7 @@ package com.aluracursos.buensaborbp.dto;
 import com.aluracursos.buensaborbp.entity.Enums.FormaPago;
 import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 // El pedido ya no recibe el detalle de artículos en el body: se arma a partir del
 // carrito persistido del cliente autenticado (ver CarritoController / Carrito).
@@ -17,5 +18,8 @@ public record PedidoRequest(
 
     Long idDomicilio,
 
-    String aclaracionDomicilio
+    String aclaracionDomicilio,
+
+    @Size(max = 255, message = "Las aclaraciones no pueden superar los 255 caracteres")
+    String aclaraciones
 ) { }

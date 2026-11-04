@@ -55,6 +55,11 @@ public class Pedido {
 
     private String aclaracionDomicilio;
 
+    // Pedido de cocina del cliente (ej. "sin cebolla"); lo ven cocina y caja. La
+    // aclaración del domicilio (timbre, piso) va aparte, para el repartidor.
+    @Column(length = 255)
+    private String aclaraciones;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetallePedido> detallePedidos = new ArrayList<>();
 

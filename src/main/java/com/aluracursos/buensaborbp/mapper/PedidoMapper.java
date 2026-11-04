@@ -1,11 +1,17 @@
 package com.aluracursos.buensaborbp.mapper;
 
+import com.aluracursos.buensaborbp.dto.ItemCocinaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoBaseResponse;
 import com.aluracursos.buensaborbp.dto.PedidoCajaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoCocinaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
+import com.aluracursos.buensaborbp.entity.Articulo;
+import com.aluracursos.buensaborbp.entity.ArticuloManufacturado;
+import com.aluracursos.buensaborbp.entity.DetallePedido;
 import com.aluracursos.buensaborbp.entity.Pedido;
+import com.aluracursos.buensaborbp.entity.Promocion;
+import org.hibernate.Hibernate;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -30,9 +36,32 @@ public interface PedidoMapper {
     // Para el Cocinero (Pantalla de Cocina)
     @Mapping(target = "estadoPedido", source = "estado")
     @Mapping(target = "cliente", expression = "java(pedido.getCliente() == null ? null : new com.aluracursos.buensaborbp.dto.ClienteBaseResponse(pedido.getCliente().getId_usuario(), pedido.getCliente().getNombre(), pedido.getCliente().getApellido(), null, pedido.getCliente().getEmail(), pedido.getCliente().getTelefono(), null, null))")
+    @Mapping(target = "items", source = "detallePedidos")
     PedidoCocinaResponse toCocinaResponse(Pedido pedido);
 
     List<PedidoCocinaResponse> toCocinaResponseList(List<Pedido> pedidos);
+
+    List<ItemCocinaResponse> toItemsCocina(List<DetallePedido> detalles);
+
+    default ItemCocinaResponse toItemCocina(DetallePedido detalle) {
+        return itemCocina(detalle.getArticulo(), detalle.getCantidad());
+    }
+
+    // DetallePedido.articulo es LAZY: sin unproxy el instanceof contra las subclases falla.
+    private static ItemCocinaResponse itemCocina(Articulo articuloLazy, int cantidad) {
+        Articulo articulo = (Articulo) Hibernate.unproxy(articuloLazy);
+        if (articulo instanceof Promocion promocion) {
+            List<ItemCocinaResponse> incluye = promocion.getPromocionDetalle().stream()
+                .filter(d -> d.getArticulos() != null)
+                .map(d -> itemCocina(d.getArticulos(), d.getCantidad() * cantidad))
+                .toList();
+            return new ItemCocinaResponse(promocion.getNombre(), cantidad, null, incluye);
+        }
+        String preparacion = articulo instanceof ArticuloManufacturado manufacturado
+            && manufacturado.getPreparacion() != null && !manufacturado.getPreparacion().isBlank()
+                ? manufacturado.getPreparacion() : null;
+        return new ItemCocinaResponse(articulo.getNombre(), cantidad, preparacion, List.of());
+    }
 
     // Detalle completo
     @Mapping(target = "estadoPedido", source = "estado")

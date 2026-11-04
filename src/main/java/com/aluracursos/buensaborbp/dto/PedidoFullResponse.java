@@ -17,6 +17,7 @@ public record PedidoFullResponse(
     TipoEnvio tipoEnvio,
     String domicilioSnapshot,
     String aclaracionDomicilio,
+    String aclaraciones,
     LocalTime horaEstimadaFinalizacion,
     FormaPago formaPago,
     BigDecimal costoTotal,

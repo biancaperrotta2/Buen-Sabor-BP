@@ -17,5 +17,6 @@ public record PedidoCajaResponse(
     FormaPago formaPago,
     EstadoPago estadoPago,
     BigDecimal total,
-    LocalTime horaEstimadaFinalizacion
+    LocalTime horaEstimadaFinalizacion,
+    String aclaraciones
 ) {}

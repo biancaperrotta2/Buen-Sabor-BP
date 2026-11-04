@@ -134,6 +134,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         // TAKE_AWAY no hace falta domicilio: el cliente retira por el local.
         Domicilio domicilio = null;
         String domicilioSnapshot = "Retiro en el local";
+        String aclaracionDomicilio = textoOpcional(request.aclaracionDomicilio());
         if (request.tipoEnvio() == TipoEnvio.DELIVERY) {
             if (request.idDomicilio() == null) {
                 throw new IllegalArgumentException("El domicilio es obligatorio para un envío a domicilio");
@@ -148,6 +149,10 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
             }
             domicilio = domicilioEncontrado;
             domicilioSnapshot = domicilio.getCalle() + " " + domicilio.getNumero();
+            // Si el cliente no escribió una aclaración puntual, va la guardada en la dirección.
+            if (aclaracionDomicilio == null) {
+                aclaracionDomicilio = textoOpcional(domicilio.getAclaraciones());
+            }
         }
 
         validarHorarioDeAtencion();
@@ -160,7 +165,8 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
             .estadoPago(EstadoPago.PENDIENTE) // Por defecto pendiente hasta que MP confirme
             .tipoEnvio(request.tipoEnvio())
             .formaPago(request.formaPago())
-            .aclaracionDomicilio(request.aclaracionDomicilio())
+            .aclaracionDomicilio(aclaracionDomicilio)
+            .aclaraciones(textoOpcional(request.aclaraciones()))
             .cliente(cliente)
             .domicilio(domicilio)
             .domicilioSnapshot(domicilioSnapshot)
@@ -585,5 +591,9 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
             case "pending", "in_process", "authorized" -> EstadoPago.PENDIENTE;
             default -> EstadoPago.RECHAZADO; // rejected, cancelled, refunded, charged_back
         };
+    }
+
+    private static String textoOpcional(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.trim();
     }
 }
