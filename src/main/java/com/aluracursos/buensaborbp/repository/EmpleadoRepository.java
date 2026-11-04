@@ -1,6 +1,7 @@
 package com.aluracursos.buensaborbp.repository;
 
 import com.aluracursos.buensaborbp.entity.Empleado;
+import com.aluracursos.buensaborbp.entity.Enums.Rol;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,4 +17,8 @@ public interface EmpleadoRepository extends JpaRepository<Empleado,Long> {
             "OR LOWER(e.apellido) LIKE LOWER(CONCAT('%', :busqueda, '%')) " +
             "OR LOWER(e.email) LIKE LOWER(CONCAT('%', :busqueda, '%'))")
     Page<Empleado> buscar(@Param("busqueda") String busqueda, Pageable pageable);
+
+    // activo null cuenta como activo (ver Empleado.isEnabled).
+    @Query("SELECT COUNT(e) FROM Empleado e WHERE e.rol = :rol AND (e.activo IS NULL OR e.activo = true)")
+    long contarActivosPorRol(@Param("rol") Rol rol);
 }

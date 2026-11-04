@@ -65,6 +65,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     private final FacturaService facturaService;
     private final FacturaRepository facturaRepository;
     private final MercadoPagoPagos mercadoPagoPagos;
+    private final TiempoEstimadoPedido tiempoEstimadoPedido;
 
     // Transiciones que puede disparar el flujo genérico (ADMIN/CAJERO/COCINERO vía
     // PUT /pedidos/{id}/estado). EN_CAMINO queda fuera a propósito: solo se llega ahí
@@ -97,7 +98,8 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
                              SucursalRepository sucursalRepository,
                              FacturaService facturaService,
                              FacturaRepository facturaRepository,
-                             MercadoPagoPagos mercadoPagoPagos) {
+                             MercadoPagoPagos mercadoPagoPagos,
+                             TiempoEstimadoPedido tiempoEstimadoPedido) {
         super(pedidoRepository);
         this.pedidoRepository = pedidoRepository;
         this.pedidoMapper = pedidoMapper;
@@ -109,6 +111,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         this.facturaService = facturaService;
         this.facturaRepository = facturaRepository;
         this.mercadoPagoPagos = mercadoPagoPagos;
+        this.tiempoEstimadoPedido = tiempoEstimadoPedido;
     }
 
     @Override
@@ -160,7 +163,6 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         // 4. Construir Pedido
         Pedido pedido = Pedido.builder()
             .fechaPedido(LocalDate.now())
-            .horaEstimadaFinalizacion(LocalTime.now().plusMinutes(30))
             .estado(Estado.PENDIENTE)
             .estadoPago(EstadoPago.PENDIENTE) // Por defecto pendiente hasta que MP confirme
             .tipoEnvio(request.tipoEnvio())
@@ -206,6 +208,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         pedido.calcularTotal();
         pedido.calcularCostoTotal();
         pedido.reservarStock();
+        pedido.setHoraEstimadaFinalizacion(tiempoEstimadoPedido.calcular(pedido, LocalTime.now()));
 
         Pedido guardado = pedidoRepository.save(pedido);
 
@@ -287,6 +290,9 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
 
         if (nuevoEstado == Estado.EN_PROCESO && estadoAnterior == Estado.PENDIENTE) {
             pedido.confirmarStock();
+            // Se recalcula al aceptar: el pedido pudo estar un rato pendiente y la cocina
+            // pudo cargarse o liberarse mientras tanto.
+            pedido.setHoraEstimadaFinalizacion(tiempoEstimadoPedido.calcular(pedido, LocalTime.now()));
         }
 
         if (nuevoEstado == Estado.CANCELADO && estadoAnterior != Estado.CANCELADO) {

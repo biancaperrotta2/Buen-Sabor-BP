@@ -56,6 +56,7 @@ class PedidoServiceImplTest {
     @Mock private FacturaService facturaService;
     @Mock private FacturaRepository facturaRepository;
     @Mock private MercadoPagoPagos mercadoPagoPagos;
+    @Mock private TiempoEstimadoPedido tiempoEstimadoPedido;
 
     private PedidoServiceImpl service;
 
@@ -63,7 +64,7 @@ class PedidoServiceImplTest {
     void setUp() {
         service = new PedidoServiceImpl(pedidoRepository, pedidoMapper, carritoRepository, clienteRepository,
                 domicilioRepository, empleadoRepository, sucursalRepository, facturaService, facturaRepository,
-                mercadoPagoPagos);
+                mercadoPagoPagos, tiempoEstimadoPedido);
         // save() se llama al final de casi todos los métodos; devolver el mismo objeto que
         // recibe alcanza para que el resto de la aserción (estado del Pedido en memoria) valga.
         lenient().when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
