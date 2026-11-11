@@ -16,6 +16,8 @@ public interface PedidoService extends BaseService<Pedido, Long> {
     PedidoFullResponse buscarPedidoPorId(Long id);
     PedidoFullResponse cambiarEstado(Long id, Estado nuevoEstado);
 
+    PedidoFullResponse rechazar(Long id, String motivo);
+
     // Retorna la lista optimizada para el Cocinero
     List<PedidoCocinaResponse> listarParaCocina();
 

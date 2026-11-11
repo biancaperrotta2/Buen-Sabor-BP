@@ -9,6 +9,7 @@ import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
 import com.aluracursos.buensaborbp.dto.PedidoRequest;
 import com.aluracursos.buensaborbp.dto.PreferenciaPagoResponse;
+import com.aluracursos.buensaborbp.dto.RechazoPedidoRequest;
 import com.aluracursos.buensaborbp.entity.Usuario;
 import com.aluracursos.buensaborbp.service.PedidoService;
 import jakarta.validation.Valid;
@@ -79,6 +80,14 @@ public class PedidoController {
     @PreAuthorize("hasAnyRole('ADMIN','CAJERO','COCINERO')")
     public ResponseEntity<PedidoFullResponse> cambiarEstado(@PathVariable Long id, @Valid @RequestBody CambiarEstadoPedidoRequest request) {
         return ResponseEntity.ok(pedidoService.cambiarEstado(id, request.nuevoEstado()));
+    }
+
+    // Botón "Rechazar" de Caja: cancela un pedido pendiente con un motivo que ve el cliente y,
+    // si ya estaba pagado con Mercado Pago, le devuelve la plata.
+    @PatchMapping("/{id}/rechazar")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+    public ResponseEntity<PedidoFullResponse> rechazar(@PathVariable Long id, @Valid @RequestBody RechazoPedidoRequest request) {
+        return ResponseEntity.ok(pedidoService.rechazar(id, request.motivo()));
     }
 
     // Inicia el checkout: crea la preferencia en Mercado Pago y devuelve la URL a la que

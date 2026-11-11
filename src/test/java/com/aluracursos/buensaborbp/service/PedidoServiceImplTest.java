@@ -427,4 +427,100 @@ class PedidoServiceImplTest {
             org.mockito.Mockito.verifyNoInteractions(mercadoPagoPagos);
         }
     }
+
+    @Nested
+    @DisplayName("rechazar (botón Rechazar de Caja)")
+    class Rechazar {
+        private Pedido pagadoConMercadoPago() {
+            Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PAGADO, FormaPago.MERCADO_PAGO, TipoEnvio.TAKE_AWAY);
+            com.aluracursos.buensaborbp.entity.DetalleMercadoPago d = new com.aluracursos.buensaborbp.entity.DetalleMercadoPago();
+            d.setId_Pago(99L);
+            p.setDetalleMercadoPago(d);
+            return p;
+        }
+
+        @Test
+        @DisplayName("Cancela el pendiente y guarda el motivo para el cliente")
+        void cancelaConMotivo() {
+            Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.rechazar(1L, "  No tenemos rúcula  ");
+
+            assertThat(p.getEstado()).isEqualTo(Estado.CANCELADO);
+            assertThat(p.getMotivoCancelacion()).isEqualTo("No tenemos rúcula");
+            org.mockito.Mockito.verifyNoInteractions(mercadoPagoPagos);
+        }
+
+        @Test
+        @DisplayName("Si ya estaba pagado con Mercado Pago, reintegra el pago")
+        void pagadoConMercadoPago_reintegra() {
+            Pedido p = pagadoConMercadoPago();
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.rechazar(1L, "Cerramos antes");
+
+            verify(mercadoPagoPagos).reintegrar(99L);
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.REINTEGRADO);
+            assertThat(p.getEstado()).isEqualTo(Estado.CANCELADO);
+        }
+
+        @Test
+        @DisplayName("Si Mercado Pago no puede reintegrar, el pedido sigue pendiente")
+        void reintegroFalla_noCancela() {
+            Pedido p = pagadoConMercadoPago();
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            org.mockito.Mockito.doThrow(new IllegalStateException("MP caído")).when(mercadoPagoPagos).reintegrar(99L);
+
+            assertThrows(IllegalStateException.class, () -> service.rechazar(1L, "Cerramos antes"));
+            assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PAGADO);
+            verify(pedidoRepository, never()).save(any(Pedido.class));
+        }
+
+        @Test
+        @DisplayName("Sin motivo no se rechaza")
+        void sinMotivo() {
+            Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            assertThrows(IllegalArgumentException.class, () -> service.rechazar(1L, "   "));
+            assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
+        }
+
+        @Test
+        @DisplayName("Un pedido ya aceptado no se puede rechazar")
+        void yaAceptado() {
+            Pedido p = pedido(1L, Estado.EN_PROCESO, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            assertThrows(IllegalStateException.class, () -> service.rechazar(1L, "Motivo"));
+        }
+
+        @Test
+        @DisplayName("El cambio de estado genérico no cancela un Mercado Pago ya cobrado")
+        void cambiarEstado_noCancelaPagadoConMercadoPago() {
+            Pedido p = pagadoConMercadoPago();
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            assertThrows(IllegalStateException.class, () -> service.cambiarEstado(1L, Estado.CANCELADO));
+            assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
+        }
+
+        @Test
+        @DisplayName("Si el cliente paga un pedido ya rechazado, se le devuelve la plata")
+        void pagoTardioDeUnRechazado_reintegra() {
+            Pedido p = pedido(1L, Estado.CANCELADO, EstadoPago.PENDIENTE, FormaPago.MERCADO_PAGO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            Payment aprobado = org.mockito.Mockito.mock(Payment.class);
+            when(aprobado.getStatus()).thenReturn("approved");
+            when(aprobado.getId()).thenReturn(99L);
+            when(mercadoPagoPagos.buscarPorPedido(1L)).thenReturn(List.of(aprobado));
+
+            service.verificarPago(1L);
+
+            verify(mercadoPagoPagos).reintegrar(99L);
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.REINTEGRADO);
+        }
+    }
 }

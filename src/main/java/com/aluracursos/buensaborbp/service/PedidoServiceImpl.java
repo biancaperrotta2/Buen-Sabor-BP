@@ -272,9 +272,54 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
                 "Este pedido se paga con Mercado Pago y todavía no está confirmado el pago; no se puede aceptar.");
         }
 
+        // Cancelar así no devolvería la plata: un pedido ya cobrado por Mercado Pago se cancela
+        // solo con "Rechazar", que hace el reintegro.
+        if (nuevoEstado == Estado.CANCELADO && pedido.getFormaPago() == FormaPago.MERCADO_PAGO
+                && pedido.getEstadoPago() == EstadoPago.PAGADO) {
+            throw new IllegalStateException(
+                "Este pedido ya está pagado con Mercado Pago; cancelalo con Rechazar para que se reintegre el pago.");
+        }
+
         aplicarCambioEstado(pedido, nuevoEstado);
 
         return pedidoMapper.toFullResponse(pedidoRepository.save(pedido));
+    }
+
+    @Override
+    @Transactional
+    public PedidoFullResponse rechazar(Long id, String motivo) {
+        Pedido pedido = pedidoRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado"));
+
+        // El cajero rechaza al revisar la orden recién ingresada (enunciado: "Pendiente" -> "Cancelado").
+        if (pedido.getEstado() != Estado.PENDIENTE) {
+            throw new IllegalStateException("Solo se puede rechazar un pedido pendiente; el #" + id + " está " + pedido.getEstado());
+        }
+        String motivoLimpio = textoOpcional(motivo);
+        if (motivoLimpio == null) {
+            throw new IllegalArgumentException("Escribí el motivo del rechazo");
+        }
+
+        // Primero el reintegro: si Mercado Pago falla, el pedido sigue pendiente y no queda
+        // cancelado como si se hubiera devuelto la plata.
+        if (pedido.getFormaPago() == FormaPago.MERCADO_PAGO && pedido.getEstadoPago() == EstadoPago.PAGADO) {
+            reintegrarPago(pedido);
+        }
+
+        pedido.setMotivoCancelacion(motivoLimpio);
+        aplicarCambioEstado(pedido, Estado.CANCELADO);
+
+        return pedidoMapper.toFullResponse(pedidoRepository.save(pedido));
+    }
+
+    private void reintegrarPago(Pedido pedido) {
+        DetalleMercadoPago detalle = pedido.getDetalleMercadoPago();
+        if (detalle == null || detalle.getId_Pago() == null) {
+            throw new IllegalStateException("No se encontró el pago de Mercado Pago del pedido #" + pedido.getId()
+                + " para reintegrarlo; probá \"Verificar pago\" primero.");
+        }
+        mercadoPagoPagos.reintegrar(detalle.getId_Pago());
+        pedido.setEstadoPago(EstadoPago.REINTEGRADO);
     }
 
     private void validarTransicion(Estado desde, Estado hacia) {
@@ -553,6 +598,12 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     // Lógica común al webhook y a verificarPago: actualiza el estado de pago del pedido según
     // lo que dice MP. Idempotente: aplicar dos veces el mismo pago no cambia nada.
     private void aplicarPago(Pedido pedido, Payment payment) {
+        // Ya se devolvió la plata: es un estado final, un aviso viejo de "approved" que llegue
+        // tarde no lo puede volver a PAGADO.
+        if (pedido.getEstadoPago() == EstadoPago.REINTEGRADO) {
+            return;
+        }
+
         // Un pedido ya pagado solo lo puede cambiar el MISMO pago que lo aprobó (ej. si después se
         // devuelve). El cliente puede intentar pagar varias veces la misma preferencia: un intento
         // rechazado que llega después de uno aprobado no debe deshacerlo ni cancelar el pedido
@@ -566,16 +617,6 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
 
         pedido.setEstadoPago(mapearEstadoPago(payment.getStatus()));
 
-        // Un pago rechazado/cancelado/reembolsado nunca va a llegar a pagarse por este pedido
-        // (el cajero ya tiene prohibido aceptar un Mercado Pago no pagado, así que quedaría
-        // trabado para siempre con el stock reservado si no lo cancelamos acá). Se ignora si
-        // el pedido ya está en un estado final, para que un reintento del webhook sea inofensivo.
-        if (pedido.getEstadoPago() == EstadoPago.RECHAZADO
-                && pedido.getEstado() != Estado.CANCELADO
-                && pedido.getEstado() != Estado.ENTREGADO) {
-            aplicarCambioEstado(pedido, Estado.CANCELADO);
-        }
-
         DetalleMercadoPago detalle = pedido.getDetalleMercadoPago();
         if (detalle == null) {
             detalle = new DetalleMercadoPago();
@@ -584,6 +625,22 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         detalle.setId_Pago(payment.getId());
         detalle.setTipoPago(payment.getPaymentTypeId());
         pedido.setDetalleMercadoPago(detalle);
+
+        // El cajero rechazó el pedido mientras el cliente todavía tenía abierto el checkout y
+        // después pagó igual: se le devuelve la plata en el momento.
+        if (pedido.getEstadoPago() == EstadoPago.PAGADO && pedido.getEstado() == Estado.CANCELADO) {
+            reintegrarPago(pedido);
+        }
+
+        // Un pago rechazado/cancelado/reembolsado nunca va a llegar a pagarse por este pedido
+        // (el cajero ya tiene prohibido aceptar un Mercado Pago no pagado, así que quedaría
+        // trabado para siempre con el stock reservado si no lo cancelamos acá). Se ignora si
+        // el pedido ya está en un estado final, para que un reintento del webhook sea inofensivo.
+        if ((pedido.getEstadoPago() == EstadoPago.RECHAZADO || pedido.getEstadoPago() == EstadoPago.REINTEGRADO)
+                && pedido.getEstado() != Estado.CANCELADO
+                && pedido.getEstado() != Estado.ENTREGADO) {
+            aplicarCambioEstado(pedido, Estado.CANCELADO);
+        }
 
         pedidoRepository.save(pedido);
     }
@@ -595,7 +652,8 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         return switch (estadoMercadoPago) {
             case "approved" -> EstadoPago.PAGADO;
             case "pending", "in_process", "authorized" -> EstadoPago.PENDIENTE;
-            default -> EstadoPago.RECHAZADO; // rejected, cancelled, refunded, charged_back
+            case "refunded" -> EstadoPago.REINTEGRADO;
+            default -> EstadoPago.RECHAZADO; // rejected, cancelled, charged_back
         };
     }
 

@@ -60,6 +60,10 @@ public class Pedido {
     @Column(length = 255)
     private String aclaraciones;
 
+    // Lo escribe el cajero al rechazar el pedido; el cliente lo ve en "Mis pedidos".
+    @Column(length = 255)
+    private String motivoCancelacion;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetallePedido> detallePedidos = new ArrayList<>();
 

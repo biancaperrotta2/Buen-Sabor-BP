@@ -1,6 +1,7 @@
 package com.aluracursos.buensaborbp.service;
 
 import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.net.MPSearchRequest;
@@ -30,6 +31,20 @@ public class MercadoPagoPagos {
                     + e.getApiResponse().getContent(), e);
         } catch (MPException e) {
             throw new IllegalStateException("No se pudo consultar el pago " + paymentId + " en Mercado Pago: " + e.getMessage(), e);
+        }
+    }
+
+    // Reintegro total del pago. Si MP no lo acepta, se corta con el error para que el pedido
+    // no quede cancelado como si se hubiera devuelto la plata.
+    public void reintegrar(Long paymentId) {
+        try {
+            new PaymentRefundClient().refund(paymentId);
+            log.info("Reintegro total pedido a MP para el pago {}", paymentId);
+        } catch (MPApiException e) {
+            throw new IllegalStateException("Mercado Pago no pudo reintegrar el pago " + paymentId + ": "
+                    + e.getApiResponse().getContent(), e);
+        } catch (MPException e) {
+            throw new IllegalStateException("Mercado Pago no pudo reintegrar el pago " + paymentId + ": " + e.getMessage(), e);
         }
     }
 

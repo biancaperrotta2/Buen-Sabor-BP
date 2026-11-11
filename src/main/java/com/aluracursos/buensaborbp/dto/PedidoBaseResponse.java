@@ -20,5 +20,6 @@ public record PedidoBaseResponse(
     String domicilioSnapshot,
     BigDecimal total,
     Long idFactura,
+    String motivoCancelacion,
     List<DetallePedidoFullResponse> detalles
 ) {}
