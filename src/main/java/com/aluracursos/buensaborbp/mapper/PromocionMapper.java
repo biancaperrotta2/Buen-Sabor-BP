@@ -14,6 +14,7 @@ import java.util.List;
 public interface PromocionMapper {
 
     @Mapping(target = "urlImagen", expression = "java(promocion.getImagenesPromocion().isEmpty() ? null : promocion.getImagenesPromocion().get(0).getUrlImagen())")
+    @Mapping(target = "disponible", expression = "java(promocion.hayStockPara(1))")
     PromocionBaseResponse toBaseResponse(Promocion promocion);
 
     List<PromocionBaseResponse> toBaseResponseList(List<Promocion> promociones);

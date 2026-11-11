@@ -43,6 +43,7 @@ public interface ArticuloInsumoMapper {
     // Vista pública para el menú del cliente: solo nombre, precio, foto y categoría.
     @Mapping(target = "denominacion", source = "nombre")
     @Mapping(target = "imagenUrl", expression = "java(entity.getImagenes() == null || entity.getImagenes().isEmpty() ? null : entity.getImagenes().get(0).getUrlImagen())")
+    @Mapping(target = "disponible", expression = "java(entity.hayStockPara(1))")
     InsumoMenuResponse toMenuResponse(ArticuloInsumo entity);
 
     @Mapping(target = "nombre", source = "denominacion")

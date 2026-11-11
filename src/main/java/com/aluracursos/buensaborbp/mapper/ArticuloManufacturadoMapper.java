@@ -17,6 +17,7 @@ public interface ArticuloManufacturadoMapper {
     @Mapping(target = "imagenUrl", expression = "java(entity.getImagenes().isEmpty() ? null : entity.getImagenes().get(0).getUrlImagen())")
     @Mapping(target = "tiempoEstimado", source = "tiempoEstimadoMinutos")
     @Mapping(target = "categoria", qualifiedByName = "categoriaBaseConPadre")
+    @Mapping(target = "disponible", expression = "java(entity.hayStockPara(1))")
     ArticuloManufacturadoBaseResponse toBaseResponse(ArticuloManufacturado entity);
 
     @Mapping(target = "denominacion", source = "nombre")

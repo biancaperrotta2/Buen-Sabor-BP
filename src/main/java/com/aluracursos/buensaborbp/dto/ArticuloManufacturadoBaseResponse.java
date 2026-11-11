@@ -12,5 +12,7 @@ public record ArticuloManufacturadoBaseResponse(
     String imagenUrl,
     Boolean esSemielaborado,
     Integer tiempoEstimado,
-    CategoriaBaseResponse categoria
+    CategoriaBaseResponse categoria,
+    // false = falta algún ingrediente para preparar 1: el menú lo muestra "Sin stock".
+    Boolean disponible
 ) { }

@@ -85,6 +85,67 @@ class ArticuloManufacturadoTest {
     }
 
     @Nested
+    @DisplayName("hayStockPara (disponibilidad en el menú)")
+    class HayStockPara {
+        @Test
+        @DisplayName("Plato final: hay si alcanza cada ingrediente, en su unidad")
+        void platoFinal_alcanzaONo() {
+            // 300 g por plato de un insumo en kg con 0,5 kg -> alcanza para 1, no para 2.
+            ArticuloInsumo queso = insumo("Queso", 1000, UnidadMedidaEnum.GR, 0.5);
+            ArticuloManufacturado plato = platoFinalCon(detalle(queso, 300));
+
+            assertThat(plato.hayStockPara(1)).isTrue();
+            assertThat(plato.hayStockPara(2)).isFalse();
+        }
+
+        @Test
+        @DisplayName("El stock reservado por otros pedidos no cuenta como disponible")
+        void reservadoNoCuenta() {
+            ArticuloInsumo pan = insumo("Pan", 100, UnidadMedidaEnum.UNIDAD, 2);
+            pan.setStockReservado(2.0);
+            ArticuloManufacturado plato = platoFinalCon(detalle(pan, 1));
+
+            assertThat(plato.hayStockPara(1)).isFalse();
+        }
+
+        @Test
+        @DisplayName("Un semielaborado cuenta solo los lotes vigentes")
+        void semielaborado_soloLotesVigentes() {
+            ArticuloManufacturado masa = semielaboradoSinLotes("Masa");
+            agregarLote(masa, 5, LocalDate.now().minusDays(1)); // vencido
+            ArticuloManufacturado plato = platoFinalCon(detalle(masa, 0.25));
+
+            assertThat(plato.hayStockPara(1)).isFalse();
+
+            agregarLote(masa, 1, LocalDate.now().plusDays(3));
+            assertThat(plato.hayStockPara(1)).isTrue();
+        }
+
+        @Test
+        @DisplayName("Un plato sin receta cargada no controla stock")
+        void sinReceta() {
+            assertThat(platoFinalCon().hayStockPara(1)).isTrue();
+        }
+
+        @Test
+        @DisplayName("Una promoción necesita stock de todo lo que incluye")
+        void promocion() {
+            ArticuloInsumo gaseosa = insumo("Gaseosa", 500, UnidadMedidaEnum.UNIDAD, 1);
+            ArticuloInsumo pan = insumo("Pan", 100, UnidadMedidaEnum.UNIDAD, 10);
+            ArticuloManufacturado hamburguesa = platoFinalCon(detalle(pan, 1));
+            Promocion combo = Promocion.builder().nombre("Combo").precioVenta(BigDecimal.TEN)
+                    .unidadMedidaEnum(UnidadMedidaEnum.UNIDAD).promocionDetalle(new ArrayList<>()).build();
+            combo.getPromocionDetalle().add(PromocionDetalle.builder().articulos(hamburguesa).cantidad(2).articuloPromocion(combo).build());
+            combo.getPromocionDetalle().add(PromocionDetalle.builder().articulos(gaseosa).cantidad(2).articuloPromocion(combo).build());
+
+            // Pan alcanza (2 de 10) pero hay 1 sola gaseosa para las 2 del combo.
+            assertThat(combo.hayStockPara(1)).isFalse();
+            gaseosa.setStockActual(2.0);
+            assertThat(combo.hayStockPara(1)).isTrue();
+        }
+    }
+
+    @Nested
     @DisplayName("calcularPrecioCosto")
     class CalcularPrecioCosto {
         @Test

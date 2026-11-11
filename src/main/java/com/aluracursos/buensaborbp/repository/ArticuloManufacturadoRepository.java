@@ -18,6 +18,9 @@ public interface ArticuloManufacturadoRepository extends JpaRepository <Articulo
 
     Page<ArticuloManufacturado> findAllByEsSemielaboradoFalse(PageRequest of);
 
+    // Menú del cliente: todos los platos activos (sin tope de página).
+    List<ArticuloManufacturado> findByActivoTrueAndEsSemielaboradoFalseOrderByNombreAsc();
+
     Page<ArticuloManufacturado> findAllByEsSemielaboradoTrue(PageRequest of);
 
     // Para el gráfico de Stock del dashboard de admin: a diferencia de un plato final

@@ -38,6 +38,11 @@ public class ArticuloInsumo extends Articulo{
         return stockActual - stockReservado;
     }
 
+    @Override
+    public boolean hayStockPara(double cantidad) {
+        return getStockDisponible() >= convertirACantidadBase(cantidad);
+    }
+
     //stock reservado cuando el cliente aun no paga el pedido, en el proceso de seleccion de productos se va reservando el stock segun lo q desee. Si hay stock disponible se RESERVA sino lanzamos ERROR.
     public void reservarStock(double cantidad, String articuloNombre){
         double cantidadBase = convertirACantidadBase(cantidad);

@@ -141,5 +141,9 @@ public abstract class Articulo {
 
     public abstract void confirmarStock(double cantidad);
 
+    // ¿Alcanza el stock disponible (actual - reservado) para vender esta cantidad? No reserva
+    // nada; lo usa el menú para mostrar un artículo como "Sin stock".
+    public abstract boolean hayStockPara(double cantidad);
+
 
 }

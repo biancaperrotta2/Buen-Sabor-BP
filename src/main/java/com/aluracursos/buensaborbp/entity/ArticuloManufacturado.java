@@ -54,6 +54,18 @@ public class ArticuloManufacturado extends Articulo{
         return stockActual - stockReservado;
     }
 
+    // Semielaborado: su propio stock (lotes vigentes). Plato final: alcanza si alcanza cada
+    // componente de la receta; un plato sin receta cargada no controla stock (siempre hay).
+    @Override
+    public boolean hayStockPara(double cantidad) {
+        if (Boolean.TRUE.equals(esSemielaborado)) {
+            actualizarStockDesdeExistencias(LocalDate.now());
+            return getStockDisponible() >= convertirACantidadBase(cantidad);
+        }
+        return getArticuloManufacturadoDetalles().stream()
+                .allMatch(d -> d.getComponente() != null && d.getComponente().hayStockPara(d.getCantidad() * cantidad));
+    }
+
     // Recalcula stockActual como la suma de lo que queda en los lotes vigentes (no vencidos ni
     // descartados). Se llama antes de reservar/confirmar y cada vez que cambian los lotes, así un
     // lote que venció deja de contar aunque nadie lo haya tocado.

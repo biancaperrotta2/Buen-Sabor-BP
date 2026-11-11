@@ -8,5 +8,7 @@ public record PromocionBaseResponse(
     BigDecimal precioVenta, // precioPromocional
     String descripcionDescuento,
     String urlImagen,
-    Boolean activo
+    Boolean activo,
+    // false = falta stock de algo que incluye: el menú la muestra "Sin stock".
+    Boolean disponible
 ) {}

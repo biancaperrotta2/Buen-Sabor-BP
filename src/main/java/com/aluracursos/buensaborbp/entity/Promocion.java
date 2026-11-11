@@ -144,6 +144,12 @@ public class Promocion extends Articulo {
 
     // ================== MANEJO DE STOCK ================== //
 
+    @Override
+    public boolean hayStockPara(double cantidad) {
+        return getPromocionDetalle().stream()
+                .allMatch(d -> d.getArticulos() != null && d.getArticulos().hayStockPara(d.getCantidad() * cantidad));
+    }
+
     public void reservarStock(double cantidad, String articuloPadreNombre) {
         for (PromocionDetalle detalle : this.getPromocionDetalle()) {
             Articulo articulo = detalle.getArticulos();

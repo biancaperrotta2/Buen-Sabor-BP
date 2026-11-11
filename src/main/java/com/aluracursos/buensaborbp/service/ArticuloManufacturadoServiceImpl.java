@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 import com.aluracursos.buensaborbp.dto.ArticuloManufacturadoDetalleRequest;
 import com.aluracursos.buensaborbp.dto.ArticuloManufacturadoFullResponse;
@@ -215,8 +216,11 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
 
     @Override
     public Page<ArticuloManufacturadoBaseResponse> getAll() {
-        Page<ArticuloManufacturado> page = manufacturadoRepository.findAllByEsSemielaboradoFalse(PageRequest.of(0, 20));
-        return page.map(manufacturadoMapper::toBaseResponse);
+        // Lo consume solo el menú del cliente: antes traía también los productos desactivados y
+        // cortaba en los primeros 20.
+        return new PageImpl<>(manufacturadoRepository.findByActivoTrueAndEsSemielaboradoFalseOrderByNombreAsc().stream()
+                .map(manufacturadoMapper::toBaseResponse)
+                .toList());
     }
 
     @Override

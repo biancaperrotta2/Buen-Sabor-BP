@@ -522,7 +522,7 @@ class ArticuloInsumoServiceImplTest {
             ArticuloInsumo coca = insumoExistente();
             when(articuloInsumoRepository.findByActivoTrueAndEsVendibleTrue()).thenReturn(List.of(coca));
             com.aluracursos.buensaborbp.dto.InsumoMenuResponse vista =
-                    new com.aluracursos.buensaborbp.dto.InsumoMenuResponse(1L, "Coca 500ml", BigDecimal.valueOf(1500), null, null);
+                    new com.aluracursos.buensaborbp.dto.InsumoMenuResponse(1L, "Coca 500ml", BigDecimal.valueOf(1500), null, null, true);
             when(articuloInsumoMapper.toMenuResponse(coca)).thenReturn(vista);
 
             assertThat(service.getVendibles()).containsExactly(vista);

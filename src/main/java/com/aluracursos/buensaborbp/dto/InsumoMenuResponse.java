@@ -9,5 +9,7 @@ public record InsumoMenuResponse(
         String denominacion,
         BigDecimal precioVenta,
         String imagenUrl,
-        CategoriaBaseResponse categoria
+        CategoriaBaseResponse categoria,
+        // Solo si hay al menos 1 para vender; no expone cuánto stock queda.
+        Boolean disponible
 ) {}
