@@ -21,5 +21,6 @@ public record PedidoBaseResponse(
     BigDecimal total,
     Long idFactura,
     String motivoCancelacion,
+    Boolean reintegroPendiente,
     List<DetallePedidoFullResponse> detalles
 ) {}

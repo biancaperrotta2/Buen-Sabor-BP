@@ -8,5 +8,9 @@ import jakarta.validation.constraints.Size;
 public record RechazoPedidoRequest(
     @NotBlank(message = "Escribí el motivo del rechazo")
     @Size(max = 255, message = "El motivo no puede superar los 255 caracteres")
-    String motivo
+    String motivo,
+
+    // true cuando el reintegro automático falló y el cajero elige rechazar igual y devolver la
+    // plata a mano desde el panel de Mercado Pago (no se vuelve a intentar contra la API).
+    boolean reintegroManual
 ) {}

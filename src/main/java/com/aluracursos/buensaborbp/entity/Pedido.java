@@ -64,6 +64,11 @@ public class Pedido {
     @Column(length = 255)
     private String motivoCancelacion;
 
+    // Se rechazó un pedido cobrado por Mercado Pago y MP no aceptó el reintegro automático: el
+    // cajero tiene que devolverlo desde el panel de MP. Sigue PAGADO hasta que se devuelva.
+    @Builder.Default
+    private Boolean reintegroPendiente = false;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetallePedido> detallePedidos = new ArrayList<>();
 

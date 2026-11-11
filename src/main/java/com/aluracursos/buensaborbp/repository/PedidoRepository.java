@@ -28,6 +28,9 @@ public interface PedidoRepository extends BaseRepository<Pedido, Long> {
     // Pedidos listos para retirar en el mostrador (a diferencia de disponibles-envio, que es delivery).
     List<Pedido> findByEstadoAndTipoEnvioOrderByHoraEstimadaFinalizacionAsc(Estado estado, TipoEnvio tipoEnvio);
 
+    // Pedidos rechazados cuyo pago de Mercado Pago el cajero todavía tiene que devolver a mano.
+    List<Pedido> findByReintegroPendienteTrueOrderByFechaPedidoAsc();
+
     // --- Reportes de administrador ---
     List<Pedido> findByFechaPedidoBetweenAndEstado(LocalDate desde, LocalDate hasta, Estado estado);
 

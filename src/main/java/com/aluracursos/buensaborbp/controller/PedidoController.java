@@ -67,6 +67,19 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarParaEntregarEnLocal());
     }
 
+    @GetMapping("/reintegros-pendientes")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+    public ResponseEntity<List<PedidoCajaResponse>> reintegrosPendientes() {
+        return ResponseEntity.ok(pedidoService.listarReintegrosPendientes());
+    }
+
+    // El cajero ya devolvió desde el panel de Mercado Pago un pago que no se pudo reintegrar solo.
+    @PatchMapping("/{id}/reintegro-manual")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+    public ResponseEntity<PedidoFullResponse> marcarReintegrado(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.marcarReintegrado(id));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','CAJERO','COCINERO','REPARTIDOR') or @pedidoSecurity.esDelCliente(authentication, #id)")
     public ResponseEntity<PedidoFullResponse> buscarPorId(@PathVariable Long id) {
@@ -87,7 +100,7 @@ public class PedidoController {
     @PatchMapping("/{id}/rechazar")
     @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
     public ResponseEntity<PedidoFullResponse> rechazar(@PathVariable Long id, @Valid @RequestBody RechazoPedidoRequest request) {
-        return ResponseEntity.ok(pedidoService.rechazar(id, request.motivo()));
+        return ResponseEntity.ok(pedidoService.rechazar(id, request.motivo(), request.reintegroManual()));
     }
 
     // Inicia el checkout: crea la preferencia en Mercado Pago y devuelve la URL a la que

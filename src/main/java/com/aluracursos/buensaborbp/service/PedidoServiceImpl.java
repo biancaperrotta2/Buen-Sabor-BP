@@ -287,7 +287,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
 
     @Override
     @Transactional
-    public PedidoFullResponse rechazar(Long id, String motivo) {
+    public PedidoFullResponse rechazar(Long id, String motivo, boolean reintegroManual) {
         Pedido pedido = pedidoRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado"));
 
@@ -301,14 +301,38 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         }
 
         // Primero el reintegro: si Mercado Pago falla, el pedido sigue pendiente y no queda
-        // cancelado como si se hubiera devuelto la plata.
+        // cancelado como si se hubiera devuelto la plata. Si el cajero ya vio que falla y elige
+        // devolverlo a mano, se cancela igual y queda marcado para devolver.
         if (pedido.getFormaPago() == FormaPago.MERCADO_PAGO && pedido.getEstadoPago() == EstadoPago.PAGADO) {
-            reintegrarPago(pedido);
+            if (reintegroManual) {
+                pedido.setReintegroPendiente(true);
+            } else {
+                reintegrarPago(pedido);
+            }
         }
 
         pedido.setMotivoCancelacion(motivoLimpio);
         aplicarCambioEstado(pedido, Estado.CANCELADO);
 
+        return pedidoMapper.toFullResponse(pedidoRepository.save(pedido));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PedidoCajaResponse> listarReintegrosPendientes() {
+        return pedidoMapper.toCajaResponseList(pedidoRepository.findByReintegroPendienteTrueOrderByFechaPedidoAsc());
+    }
+
+    @Override
+    @Transactional
+    public PedidoFullResponse marcarReintegrado(Long id) {
+        Pedido pedido = pedidoRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado"));
+        if (!Boolean.TRUE.equals(pedido.getReintegroPendiente())) {
+            throw new IllegalStateException("El pedido #" + id + " no tiene un reintegro pendiente");
+        }
+        pedido.setReintegroPendiente(false);
+        pedido.setEstadoPago(EstadoPago.REINTEGRADO);
         return pedidoMapper.toFullResponse(pedidoRepository.save(pedido));
     }
 
@@ -628,8 +652,15 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
 
         // El cajero rechazó el pedido mientras el cliente todavía tenía abierto el checkout y
         // después pagó igual: se le devuelve la plata en el momento.
-        if (pedido.getEstadoPago() == EstadoPago.PAGADO && pedido.getEstado() == Estado.CANCELADO) {
+        // No aplica si el cajero ya quedó en devolverlo a mano: se reintentaría en cada aviso.
+        if (pedido.getEstadoPago() == EstadoPago.PAGADO && pedido.getEstado() == Estado.CANCELADO
+                && !Boolean.TRUE.equals(pedido.getReintegroPendiente())) {
             reintegrarPago(pedido);
+        }
+
+        // El cajero hizo la devolución desde el panel de MP y llegó el aviso "refunded".
+        if (pedido.getEstadoPago() == EstadoPago.REINTEGRADO) {
+            pedido.setReintegroPendiente(false);
         }
 
         // Un pago rechazado/cancelado/reembolsado nunca va a llegar a pagarse por este pedido

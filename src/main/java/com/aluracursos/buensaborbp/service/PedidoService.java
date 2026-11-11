@@ -16,7 +16,13 @@ public interface PedidoService extends BaseService<Pedido, Long> {
     PedidoFullResponse buscarPedidoPorId(Long id);
     PedidoFullResponse cambiarEstado(Long id, Estado nuevoEstado);
 
-    PedidoFullResponse rechazar(Long id, String motivo);
+    PedidoFullResponse rechazar(Long id, String motivo, boolean reintegroManual);
+
+    // Rechazados con el reintegro de Mercado Pago pendiente (se devuelve desde el panel de MP).
+    List<PedidoCajaResponse> listarReintegrosPendientes();
+
+    // El cajero ya devolvió el pago desde el panel de Mercado Pago.
+    PedidoFullResponse marcarReintegrado(Long id);
 
     // Retorna la lista optimizada para el Cocinero
     List<PedidoCocinaResponse> listarParaCocina();

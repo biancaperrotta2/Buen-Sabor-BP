@@ -445,7 +445,7 @@ class PedidoServiceImplTest {
             Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
             when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
 
-            service.rechazar(1L, "  No tenemos rúcula  ");
+            service.rechazar(1L, "  No tenemos rúcula  ", false);
 
             assertThat(p.getEstado()).isEqualTo(Estado.CANCELADO);
             assertThat(p.getMotivoCancelacion()).isEqualTo("No tenemos rúcula");
@@ -458,7 +458,7 @@ class PedidoServiceImplTest {
             Pedido p = pagadoConMercadoPago();
             when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
 
-            service.rechazar(1L, "Cerramos antes");
+            service.rechazar(1L, "Cerramos antes", false);
 
             verify(mercadoPagoPagos).reintegrar(99L);
             assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.REINTEGRADO);
@@ -472,7 +472,7 @@ class PedidoServiceImplTest {
             when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
             org.mockito.Mockito.doThrow(new IllegalStateException("MP caído")).when(mercadoPagoPagos).reintegrar(99L);
 
-            assertThrows(IllegalStateException.class, () -> service.rechazar(1L, "Cerramos antes"));
+            assertThrows(IllegalStateException.class, () -> service.rechazar(1L, "Cerramos antes", false));
             assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
             assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PAGADO);
             verify(pedidoRepository, never()).save(any(Pedido.class));
@@ -484,7 +484,7 @@ class PedidoServiceImplTest {
             Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
             when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
 
-            assertThrows(IllegalArgumentException.class, () -> service.rechazar(1L, "   "));
+            assertThrows(IllegalArgumentException.class, () -> service.rechazar(1L, "   ", false));
             assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
         }
 
@@ -494,7 +494,7 @@ class PedidoServiceImplTest {
             Pedido p = pedido(1L, Estado.EN_PROCESO, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
             when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
 
-            assertThrows(IllegalStateException.class, () -> service.rechazar(1L, "Motivo"));
+            assertThrows(IllegalStateException.class, () -> service.rechazar(1L, "Motivo", false));
         }
 
         @Test
@@ -505,6 +505,79 @@ class PedidoServiceImplTest {
 
             assertThrows(IllegalStateException.class, () -> service.cambiarEstado(1L, Estado.CANCELADO));
             assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
+        }
+
+        @Test
+        @DisplayName("Con reintegro manual se cancela sin llamar a Mercado Pago y queda para devolver")
+        void reintegroManual_cancelaYQuedaPendiente() {
+            Pedido p = pagadoConMercadoPago();
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.rechazar(1L, "Cerramos antes", true);
+
+            org.mockito.Mockito.verifyNoInteractions(mercadoPagoPagos);
+            assertThat(p.getEstado()).isEqualTo(Estado.CANCELADO);
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PAGADO);
+            assertThat(p.getReintegroPendiente()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Marcar como devuelto deja el pago reintegrado")
+        void marcarReintegrado() {
+            Pedido p = pagadoConMercadoPago();
+            p.setEstado(Estado.CANCELADO);
+            p.setReintegroPendiente(true);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.marcarReintegrado(1L);
+
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.REINTEGRADO);
+            assertThat(p.getReintegroPendiente()).isFalse();
+        }
+
+        @Test
+        @DisplayName("No se puede marcar como devuelto un pedido sin reintegro pendiente")
+        void marcarReintegrado_sinPendiente() {
+            Pedido p = pagadoConMercadoPago();
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            assertThrows(IllegalStateException.class, () -> service.marcarReintegrado(1L));
+        }
+
+        @Test
+        @DisplayName("Con reintegro manual pendiente, verificar el pago no reintenta el reintegro")
+        void reintegroPendiente_verificarNoReintenta() {
+            Pedido p = pagadoConMercadoPago();
+            p.setEstado(Estado.CANCELADO);
+            p.setReintegroPendiente(true);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            Payment aprobado = org.mockito.Mockito.mock(Payment.class);
+            when(aprobado.getStatus()).thenReturn("approved");
+            when(aprobado.getId()).thenReturn(99L);
+            when(mercadoPagoPagos.buscarPorPedido(1L)).thenReturn(List.of(aprobado));
+
+            service.verificarPago(1L);
+
+            verify(mercadoPagoPagos, never()).reintegrar(anyLong());
+            assertThat(p.getReintegroPendiente()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Cuando MP avisa que se devolvió desde el panel, se cierra el reintegro pendiente")
+        void reintegroPendiente_avisoRefunded() {
+            Pedido p = pagadoConMercadoPago();
+            p.setEstado(Estado.CANCELADO);
+            p.setReintegroPendiente(true);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            Payment devuelto = org.mockito.Mockito.mock(Payment.class);
+            when(devuelto.getStatus()).thenReturn("refunded");
+            when(devuelto.getId()).thenReturn(99L);
+            when(mercadoPagoPagos.buscarPorPedido(1L)).thenReturn(List.of(devuelto));
+
+            service.verificarPago(1L);
+
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.REINTEGRADO);
+            assertThat(p.getReintegroPendiente()).isFalse();
         }
 
         @Test
