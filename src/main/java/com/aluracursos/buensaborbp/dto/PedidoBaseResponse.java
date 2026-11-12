@@ -19,6 +19,10 @@ public record PedidoBaseResponse(
     FormaPago formaPago,
     String domicilioSnapshot,
     BigDecimal total,
+    // Para el diálogo de detalle de "Mis órdenes" (mismos nombres que en Pedido: se mapean solos).
+    BigDecimal gastosEnvio,
+    BigDecimal descuento,
+    String aclaraciones,
     Long idFactura,
     String motivoCancelacion,
     Boolean reintegroPendiente,

@@ -9,5 +9,7 @@ public record DetallePedidoFullResponse(
     BigDecimal subtotal,
     // Nombre de lo vendido sea plato, promoción o insumo (articuloManufacturado solo viene
     // cuando es un plato; sin esto "Mis pedidos" mostraba "Producto" para el resto).
-    String nombreArticulo
+    String nombreArticulo,
+    // Para "Repetir orden": volver a encontrar el artículo en el menú de hoy.
+    Long idArticulo
 ) { }
