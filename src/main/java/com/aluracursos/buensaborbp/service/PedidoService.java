@@ -36,6 +36,13 @@ public interface PedidoService extends BaseService<Pedido, Long> {
     void procesarNotificacionPago(Long paymentId);
     com.aluracursos.buensaborbp.dto.VerificacionPagoResponse verificarPago(Long pedidoId);
 
+    // Crea (o reutiliza, si sigue abierta) la orden en la pasarela cripto y devuelve su link de pago.
+    com.aluracursos.buensaborbp.dto.PagoCriptoResponse crearPagoCripto(Long pedidoId);
+
+    // Aviso de la pasarela cripto (webhook de CoinGate o la pasarela simulada). Se valida el token y
+    // se vuelve a consultar la orden a la pasarela antes de tocar el pedido (no se confía en el aviso).
+    void procesarAvisoCripto(Long idOrden, String idPedido, String token);
+
     // --- Flujo de repartidor ---
 
     // Pedidos PREPARADO + DELIVERY que todavía no tomó ningún repartidor.

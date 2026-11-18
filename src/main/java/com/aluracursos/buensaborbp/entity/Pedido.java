@@ -64,6 +64,12 @@ public class Pedido {
     @Column(length = 255)
     private String motivoCancelacion;
 
+    // Pago con criptomonedas (CoinGate): id de la orden en CoinGate, link de pago y el token que
+    // mandamos al crearla y que CoinGate devuelve en cada aviso (así sabemos que es genuino).
+    private Long idOrdenCripto;
+    private String urlPagoCripto;
+    private String tokenPagoCripto;
+
     // Se rechazó un pedido cobrado por Mercado Pago y MP no aceptó el reintegro automático: el
     // cajero tiene que devolverlo desde el panel de MP. Sigue PAGADO hasta que se devuelva.
     @Builder.Default

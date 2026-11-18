@@ -52,6 +52,7 @@ public class SecurityConfig {
                         // Lo llama Mercado Pago server-to-server, sin nuestro JWT. La autenticidad
                         // se valida con la firma x-signature (ver WebhookMercadoPagoController), no acá.
                         .requestMatchers(HttpMethod.POST, "/webhooks/mercadopago").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/webhooks/coingate").permitAll()
                         // Catálogo público: cualquiera puede navegar categorías, productos y unidades de
                         // medida sin loguearse. Los insumos quedan protegidos (son datos internos de costo/stock).
                         // Ciudades/provincias también públicas: se necesitan para completar el formulario de registro.

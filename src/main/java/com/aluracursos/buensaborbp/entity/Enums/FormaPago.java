@@ -5,5 +5,12 @@ package com.aluracursos.buensaborbp.entity.Enums;
 // hay un valor TARJETA_* propio.
 public enum FormaPago {
     EFECTIVO,
-    MERCADO_PAGO
+    MERCADO_PAGO,
+    // Criptomonedas (ver PasarelaCripto: simulada o CoinGate). Se cobra online como Mercado Pago.
+    CRIPTO;
+
+    // Se cobra antes de preparar el pedido: el cajero no puede aceptarlo sin el pago confirmado.
+    public boolean esOnline() {
+        return this == MERCADO_PAGO || this == CRIPTO;
+    }
 }

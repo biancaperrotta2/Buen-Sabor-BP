@@ -57,6 +57,7 @@ class PedidoServiceImplTest {
     @Mock private FacturaRepository facturaRepository;
     @Mock private MercadoPagoPagos mercadoPagoPagos;
     @Mock private TiempoEstimadoPedido tiempoEstimadoPedido;
+    @Mock private PasarelaCripto coinGatePagos;
 
     private PedidoServiceImpl service;
 
@@ -64,7 +65,11 @@ class PedidoServiceImplTest {
     void setUp() {
         service = new PedidoServiceImpl(pedidoRepository, pedidoMapper, carritoRepository, clienteRepository,
                 domicilioRepository, empleadoRepository, sucursalRepository, facturaService, facturaRepository,
-                mercadoPagoPagos, tiempoEstimadoPedido);
+                mercadoPagoPagos, tiempoEstimadoPedido, coinGatePagos);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "cotizacionUsd", new java.math.BigDecimal("1500"));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "backUrlSuccess", "http://localhost:5173/pago/exito");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "backUrlFailure", "http://localhost:5173/pago/error");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "callbackCripto", "https://ejemplo.test/webhooks/coingate");
         // save() se llama al final de casi todos los métodos; devolver el mismo objeto que
         // recibe alcanza para que el resto de la aserción (estado del Pedido en memoria) valga.
         lenient().when(pedidoRepository.save(any(Pedido.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -594,6 +599,147 @@ class PedidoServiceImplTest {
 
             verify(mercadoPagoPagos).reintegrar(99L);
             assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.REINTEGRADO);
+        }
+    }
+
+    @Nested
+    @DisplayName("Pago con criptomonedas (CoinGate)")
+    class PagoCripto {
+        private Pedido pedidoCripto(Estado estado, EstadoPago estadoPago) {
+            Pedido p = pedido(1L, estado, estadoPago, FormaPago.CRIPTO, TipoEnvio.TAKE_AWAY);
+            p.setTotal(new java.math.BigDecimal("13500"));
+            p.setDetallePedidos(new java.util.ArrayList<>());
+            return p;
+        }
+
+        private PasarelaCripto.OrdenCripto orden(String status) {
+            return new PasarelaCripto.OrdenCripto(77L, status, "1", "https://pay-sandbox.coingate.com/invoice/abc");
+        }
+
+        @Test
+        @DisplayName("Crea la orden en dólares con la cotización fija y guarda el token")
+        @SuppressWarnings("unchecked")
+        void crearPago_convierteADolares() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(coinGatePagos.crearOrden(any())).thenReturn(orden("new"));
+
+            var r = service.crearPagoCripto(1L);
+
+            org.mockito.ArgumentCaptor<java.util.Map<String, String>> campos = org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
+            verify(coinGatePagos).crearOrden(campos.capture());
+            assertThat(campos.getValue()).containsEntry("price_amount", "9.00").containsEntry("price_currency", "USD")
+                    .containsEntry("order_id", "1").containsEntry("success_url", "http://localhost:5173/pago/exito?external_reference=1");
+            assertThat(campos.getValue().get("token")).isEqualTo(p.getTokenPagoCripto()).isNotBlank();
+            assertThat(r.montoUsd()).isEqualByComparingTo("9.00");
+            assertThat(p.getIdOrdenCripto()).isEqualTo(77L);
+            assertThat(p.getUrlPagoCripto()).isEqualTo(r.urlPago());
+        }
+
+        @Test
+        @DisplayName("Si ya hay una orden abierta, la reutiliza en vez de crear otra")
+        void crearPago_reutilizaOrdenAbierta() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            p.setIdOrdenCripto(77L);
+            p.setUrlPagoCripto("https://pay-sandbox.coingate.com/invoice/abc");
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(coinGatePagos.obtenerOrden(77L)).thenReturn(orden("pending"));
+
+            var r = service.crearPagoCripto(1L);
+
+            assertThat(r.urlPago()).isEqualTo("https://pay-sandbox.coingate.com/invoice/abc");
+            verify(coinGatePagos, never()).crearOrden(any());
+        }
+
+        @Test
+        @DisplayName("Un aviso con token inválido no toca el pedido")
+        void aviso_tokenInvalido() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            p.setTokenPagoCripto("token-bueno");
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                    () -> service.procesarAvisoCripto(77L, "1", "token-falso"));
+            org.mockito.Mockito.verifyNoInteractions(coinGatePagos);
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PENDIENTE);
+        }
+
+        @Test
+        @DisplayName("Un aviso válido toma el estado consultando a CoinGate: pagado")
+        void aviso_pagado() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            p.setTokenPagoCripto("token-bueno");
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(coinGatePagos.obtenerOrden(77L)).thenReturn(orden("paid"));
+
+            service.procesarAvisoCripto(77L, "1", "token-bueno");
+
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PAGADO);
+        }
+
+        @Test
+        @DisplayName("Una orden vencida cancela el pedido (como un pago rechazado)")
+        void verificar_vencido_cancela() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            p.setIdOrdenCripto(77L);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(coinGatePagos.obtenerOrden(77L)).thenReturn(orden("expired"));
+
+            var r = service.verificarPago(1L);
+
+            assertThat(r.pagoEncontrado()).isTrue();
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.RECHAZADO);
+            assertThat(p.getEstado()).isEqualTo(Estado.CANCELADO);
+        }
+
+        @Test
+        @DisplayName("Un aviso vencido que llega tarde no deshace un pago confirmado")
+        void yaPagado_noSeDeshace() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PAGADO);
+            p.setIdOrdenCripto(77L);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(coinGatePagos.obtenerOrden(77L)).thenReturn(orden("expired"));
+
+            service.verificarPago(1L);
+
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PAGADO);
+            assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
+        }
+
+        @Test
+        @DisplayName("Sin orden creada todavía, verificar no consulta a CoinGate")
+        void verificar_sinOrden() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            var r = service.verificarPago(1L);
+
+            assertThat(r.pagoEncontrado()).isFalse();
+            org.mockito.Mockito.verifyNoInteractions(coinGatePagos);
+        }
+
+        @Test
+        @DisplayName("El cajero no puede aceptar un pedido cripto sin pagar")
+        void noSeAceptaSinPago() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PENDIENTE);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.cambiarEstado(1L, Estado.EN_PROCESO));
+            assertThat(ex.getMessage()).contains("criptomonedas");
+        }
+
+        @Test
+        @DisplayName("Rechazar un pedido cripto pagado lo deja para devolver a mano")
+        void rechazarPagado_quedaParaDevolver() {
+            Pedido p = pedidoCripto(Estado.PENDIENTE, EstadoPago.PAGADO);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.rechazar(1L, "Sin stock", false);
+
+            assertThat(p.getEstado()).isEqualTo(Estado.CANCELADO);
+            assertThat(p.getReintegroPendiente()).isTrue();
+            assertThat(p.getEstadoPago()).isEqualTo(EstadoPago.PAGADO);
+            org.mockito.Mockito.verifyNoInteractions(mercadoPagoPagos, coinGatePagos);
         }
     }
 }

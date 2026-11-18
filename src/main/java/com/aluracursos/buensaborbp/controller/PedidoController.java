@@ -9,6 +9,7 @@ import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
 import com.aluracursos.buensaborbp.dto.PedidoRequest;
 import com.aluracursos.buensaborbp.dto.PreferenciaPagoResponse;
+import com.aluracursos.buensaborbp.dto.PagoCriptoResponse;
 import com.aluracursos.buensaborbp.dto.RechazoPedidoRequest;
 import com.aluracursos.buensaborbp.entity.Usuario;
 import com.aluracursos.buensaborbp.service.PedidoService;
@@ -109,6 +110,13 @@ public class PedidoController {
     @PreAuthorize("hasRole('ADMIN') or @pedidoSecurity.esDelCliente(authentication, #id)")
     public ResponseEntity<PreferenciaPagoResponse> crearPreferenciaPago(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoService.crearPreferenciaPago(id));
+    }
+
+    // Pago con criptomonedas: crea la orden en CoinGate y devuelve el link a su página de pago.
+    @PostMapping("/{id}/pago/cripto")
+    @PreAuthorize("hasRole('ADMIN') or @pedidoSecurity.esDelCliente(authentication, #id)")
+    public ResponseEntity<PagoCriptoResponse> crearPagoCripto(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.crearPagoCripto(id));
     }
 
     // Le pregunta a Mercado Pago cómo salió el pago del pedido y lo actualiza (no depende de que

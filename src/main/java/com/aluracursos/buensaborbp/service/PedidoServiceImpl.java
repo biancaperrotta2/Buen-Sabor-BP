@@ -8,6 +8,7 @@ import com.aluracursos.buensaborbp.dto.PedidoEntregaResponse;
 import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
 import com.aluracursos.buensaborbp.dto.PedidoRequest;
 import com.aluracursos.buensaborbp.dto.PreferenciaPagoResponse;
+import com.aluracursos.buensaborbp.dto.PagoCriptoResponse;
 import com.aluracursos.buensaborbp.entity.Carrito;
 import com.aluracursos.buensaborbp.entity.DetalleMercadoPago;
 import com.aluracursos.buensaborbp.entity.Empleado;
@@ -47,6 +48,9 @@ import com.aluracursos.buensaborbp.entity.Domicilio;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.LinkedHashMap;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +70,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     private final FacturaRepository facturaRepository;
     private final MercadoPagoPagos mercadoPagoPagos;
     private final TiempoEstimadoPedido tiempoEstimadoPedido;
+    private final PasarelaCripto pasarelaCripto;
 
     // Transiciones que puede disparar el flujo genérico (ADMIN/CAJERO/COCINERO vía
     // PUT /pedidos/{id}/estado). EN_CAMINO queda fuera a propósito: solo se llega ahí
@@ -89,6 +94,16 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     @Value("${mercadopago.back-url-failure:}")
     private String backUrlFailure;
 
+    // 1 USD = N pesos. Fija y configurable (decisión de la usuaria): predecible para la demo y sin
+    // depender de un servicio de cotizaciones.
+    @Value("${cripto.cotizacion-usd:1500}")
+    private BigDecimal cotizacionUsd;
+
+    // A dónde avisa CoinGate (dominio fijo de ngrok en local). Vacío = sin aviso: el pago se
+    // confirma igual con "Verificar pago" o al volver de CoinGate.
+    @Value("${coingate.callback-url:}")
+    private String callbackCripto;
+
     public PedidoServiceImpl(PedidoRepository pedidoRepository,
                              PedidoMapper pedidoMapper,
                              CarritoRepository carritoRepository,
@@ -99,7 +114,8 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
                              FacturaService facturaService,
                              FacturaRepository facturaRepository,
                              MercadoPagoPagos mercadoPagoPagos,
-                             TiempoEstimadoPedido tiempoEstimadoPedido) {
+                             TiempoEstimadoPedido tiempoEstimadoPedido,
+                             PasarelaCripto pasarelaCripto) {
         super(pedidoRepository);
         this.pedidoRepository = pedidoRepository;
         this.pedidoMapper = pedidoMapper;
@@ -112,6 +128,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         this.facturaRepository = facturaRepository;
         this.mercadoPagoPagos = mercadoPagoPagos;
         this.tiempoEstimadoPedido = tiempoEstimadoPedido;
+        this.pasarelaCripto = pasarelaCripto;
     }
 
     @Override
@@ -264,20 +281,20 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
                 "Un pedido con envío a domicilio se entrega desde el flujo del repartidor (PATCH /pedidos/{id}/entregar), no desde este endpoint");
         }
 
-        // No tiene sentido empezar a cocinar (ni cobrar dos veces) un pedido de Mercado Pago
-        // que el comprador todavía no terminó de pagar.
-        if (nuevoEstado == Estado.EN_PROCESO && pedido.getFormaPago() == FormaPago.MERCADO_PAGO
+        // No tiene sentido empezar a cocinar (ni cobrar dos veces) un pedido que se paga online
+        // (Mercado Pago o cripto) y que el comprador todavía no terminó de pagar.
+        if (nuevoEstado == Estado.EN_PROCESO && pedido.getFormaPago().esOnline()
                 && pedido.getEstadoPago() != EstadoPago.PAGADO) {
             throw new IllegalStateException(
-                "Este pedido se paga con Mercado Pago y todavía no está confirmado el pago; no se puede aceptar.");
+                "Este pedido se paga con " + nombrePasarela(pedido) + " y todavía no está confirmado el pago; no se puede aceptar.");
         }
 
-        // Cancelar así no devolvería la plata: un pedido ya cobrado por Mercado Pago se cancela
-        // solo con "Rechazar", que hace el reintegro.
-        if (nuevoEstado == Estado.CANCELADO && pedido.getFormaPago() == FormaPago.MERCADO_PAGO
+        // Cancelar así no devolvería la plata: un pedido ya cobrado online se cancela solo con
+        // "Rechazar", que hace (o deja anotado) el reintegro.
+        if (nuevoEstado == Estado.CANCELADO && pedido.getFormaPago().esOnline()
                 && pedido.getEstadoPago() == EstadoPago.PAGADO) {
             throw new IllegalStateException(
-                "Este pedido ya está pagado con Mercado Pago; cancelalo con Rechazar para que se reintegre el pago.");
+                "Este pedido ya está pagado con " + nombrePasarela(pedido) + "; cancelalo con Rechazar para que se reintegre el pago.");
         }
 
         aplicarCambioEstado(pedido, nuevoEstado);
@@ -303,6 +320,11 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         // Primero el reintegro: si Mercado Pago falla, el pedido sigue pendiente y no queda
         // cancelado como si se hubiera devuelto la plata. Si el cajero ya vio que falla y elige
         // devolverlo a mano, se cancela igual y queda marcado para devolver.
+        // Cripto: la pasarela no devuelve sola (necesita la billetera del cliente), así que siempre
+        // queda en "Pagos para devolver" y el cajero lo devuelve desde el panel de la pasarela.
+        if (pedido.getFormaPago() == FormaPago.CRIPTO && pedido.getEstadoPago() == EstadoPago.PAGADO) {
+            pedido.setReintegroPendiente(true);
+        }
         if (pedido.getFormaPago() == FormaPago.MERCADO_PAGO && pedido.getEstadoPago() == EstadoPago.PAGADO) {
             if (reintegroManual) {
                 pedido.setReintegroPendiente(true);
@@ -334,6 +356,146 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         pedido.setReintegroPendiente(false);
         pedido.setEstadoPago(EstadoPago.REINTEGRADO);
         return pedidoMapper.toFullResponse(pedidoRepository.save(pedido));
+    }
+
+    // ============ PAGO CON CRIPTOMONEDAS (pasarela simulada o CoinGate) ============ //
+
+    @Override
+    @Transactional
+    public PagoCriptoResponse crearPagoCripto(Long pedidoId) {
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado"));
+        if (pedido.getFormaPago() != FormaPago.CRIPTO) {
+            throw new IllegalStateException("El pedido #" + pedidoId + " no se paga con criptomonedas");
+        }
+        if (pedido.getEstadoPago() == EstadoPago.PAGADO) {
+            throw new IllegalStateException("El pedido ya fue pagado");
+        }
+        if (pedido.getEstado() == Estado.CANCELADO) {
+            throw new IllegalStateException("El pedido #" + pedidoId + " está cancelado");
+        }
+
+        BigDecimal montoUsd = montoEnDolares(pedido);
+
+        // Si ya había una orden abierta (el cliente cerró la pestaña y vuelve), se reutiliza: crear
+        // otra dejaría la primera huérfana y un pago en ella no se asociaría al pedido.
+        if (pedido.getIdOrdenCripto() != null && pedido.getUrlPagoCripto() != null) {
+            PasarelaCripto.OrdenCripto actual = pasarelaCripto.obtenerOrden(pedido.getIdOrdenCripto());
+            if (ORDENES_CRIPTO_ABIERTAS.contains(actual.status())) {
+                return new PagoCriptoResponse(pedidoId, pedido.getUrlPagoCripto(), montoUsd, cotizacionUsd);
+            }
+            aplicarEstadoCripto(pedido, actual.status());
+            if (pedido.getEstadoPago() == EstadoPago.PAGADO || pedido.getEstado() == Estado.CANCELADO) {
+                throw new IllegalStateException("El pago del pedido #" + pedidoId + " ya no está pendiente ("
+                        + actual.status() + ")");
+            }
+        }
+
+        String token = UUID.randomUUID().toString();
+        Map<String, String> campos = new LinkedHashMap<>();
+        campos.put("order_id", pedidoId.toString());
+        campos.put("price_amount", montoUsd.toPlainString());
+        campos.put("price_currency", "USD");
+        campos.put("title", "Pedido #" + pedidoId + " - El Buen Sabor");
+        campos.put("description", pedido.getDetallePedidos().stream()
+                .map(d -> d.getCantidad() + " x " + (d.getArticulo() != null ? d.getArticulo().getNombre() : "Producto"))
+                .collect(java.util.stream.Collectors.joining(", ")));
+        campos.put("callback_url", callbackCripto);
+        // Misma pantalla de vuelta que Mercado Pago: lee external_reference y verifica el pago.
+        campos.put("success_url", backUrlSuccess + "?external_reference=" + pedidoId);
+        campos.put("cancel_url", backUrlFailure + "?external_reference=" + pedidoId);
+        campos.put("token", token);
+
+        PasarelaCripto.OrdenCripto orden = pasarelaCripto.crearOrden(campos);
+        pedido.setIdOrdenCripto(orden.id());
+        pedido.setUrlPagoCripto(orden.paymentUrl());
+        pedido.setTokenPagoCripto(token);
+        pedidoRepository.save(pedido);
+
+        return new PagoCriptoResponse(pedidoId, orden.paymentUrl(), montoUsd, cotizacionUsd);
+    }
+
+    @Override
+    @Transactional
+    public void procesarAvisoCripto(Long idOrden, String idPedido, String token) {
+        if (idOrden == null || idPedido == null) {
+            throw new IllegalArgumentException("Aviso de CoinGate incompleto");
+        }
+        Pedido pedido = pedidoRepository.findById(Long.valueOf(idPedido))
+                .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado: " + idPedido));
+        if (pedido.getTokenPagoCripto() == null || !pedido.getTokenPagoCripto().equals(token)) {
+            throw new org.springframework.security.access.AccessDeniedException("Token de CoinGate inválido");
+        }
+        // El estado se toma de CoinGate, no del aviso, y la orden tiene que ser de este pedido.
+        PasarelaCripto.OrdenCripto orden = pasarelaCripto.obtenerOrden(idOrden);
+        if (!idPedido.equals(orden.orderId())) {
+            throw new IllegalArgumentException("La orden " + idOrden + " de la pasarela cripto no es del pedido #" + idPedido);
+        }
+        pedido.setIdOrdenCripto(orden.id());
+        aplicarEstadoCripto(pedido, orden.status());
+    }
+
+    private VerificacionPagoResponse verificarPagoCripto(Pedido pedido) {
+        if (pedido.getIdOrdenCripto() == null) {
+            return new VerificacionPagoResponse(pedido.getId(), pedido.getEstadoPago(), false);
+        }
+        PasarelaCripto.OrdenCripto orden = pasarelaCripto.obtenerOrden(pedido.getIdOrdenCripto());
+        aplicarEstadoCripto(pedido, orden.status());
+        return new VerificacionPagoResponse(pedido.getId(), pedido.getEstadoPago(), true);
+    }
+
+    private static final Set<String> ORDENES_CRIPTO_ABIERTAS = Set.of("new", "pending", "confirming");
+
+    // Mismas reglas que aplicarPago (Mercado Pago), con los estados de CoinGate.
+    private void aplicarEstadoCripto(Pedido pedido, String estadoCoinGate) {
+        if (pedido.getEstadoPago() == EstadoPago.REINTEGRADO) {
+            return; // estado final
+        }
+        EstadoPago nuevo = mapearEstadoCripto(estadoCoinGate);
+        // Una vez pagado, solo una devolución lo cambia (un "expired" viejo que llegue tarde no).
+        if (pedido.getEstadoPago() == EstadoPago.PAGADO && nuevo != EstadoPago.REINTEGRADO) {
+            return;
+        }
+        pedido.setEstadoPago(nuevo);
+
+        // Pagó un pedido ya rechazado: queda para devolver a mano desde el panel de CoinGate.
+        if (nuevo == EstadoPago.PAGADO && pedido.getEstado() == Estado.CANCELADO) {
+            pedido.setReintegroPendiente(true);
+        }
+        if (nuevo == EstadoPago.REINTEGRADO) {
+            pedido.setReintegroPendiente(false);
+        }
+        // Venció, se canceló o fue inválido: igual que un pago rechazado de Mercado Pago, se cancela
+        // el pedido y se libera el stock reservado.
+        if ((nuevo == EstadoPago.RECHAZADO || nuevo == EstadoPago.REINTEGRADO)
+                && pedido.getEstado() != Estado.CANCELADO
+                && pedido.getEstado() != Estado.ENTREGADO) {
+            aplicarCambioEstado(pedido, Estado.CANCELADO);
+        }
+        pedidoRepository.save(pedido);
+    }
+
+    private EstadoPago mapearEstadoCripto(String estado) {
+        if (estado == null) {
+            return EstadoPago.PENDIENTE;
+        }
+        return switch (estado) {
+            case "paid" -> EstadoPago.PAGADO;
+            case "new", "pending", "confirming" -> EstadoPago.PENDIENTE;
+            case "refunded", "partially_refunded" -> EstadoPago.REINTEGRADO;
+            default -> EstadoPago.RECHAZADO; // invalid, expired, canceled
+        };
+    }
+
+    private BigDecimal montoEnDolares(Pedido pedido) {
+        if (cotizacionUsd == null || cotizacionUsd.signum() <= 0) {
+            throw new IllegalStateException("La cotización del dólar para cripto (cripto.cotizacion-usd) no es válida");
+        }
+        return pedido.getTotal().divide(cotizacionUsd, 2, RoundingMode.HALF_UP);
+    }
+
+    private static String nombrePasarela(Pedido pedido) {
+        return pedido.getFormaPago() == FormaPago.CRIPTO ? "criptomonedas" : "Mercado Pago";
     }
 
     private void reintegrarPago(Pedido pedido) {
@@ -599,6 +761,9 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     public VerificacionPagoResponse verificarPago(Long pedidoId) {
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado: " + pedidoId));
+        if (pedido.getFormaPago() == FormaPago.CRIPTO) {
+            return verificarPagoCripto(pedido);
+        }
         if (pedido.getFormaPago() != FormaPago.MERCADO_PAGO) {
             throw new IllegalStateException("El pedido #" + pedidoId + " no se paga con Mercado Pago");
         }
