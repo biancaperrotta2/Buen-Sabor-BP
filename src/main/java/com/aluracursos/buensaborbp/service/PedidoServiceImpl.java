@@ -241,22 +241,22 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     private void validarHorarioDeAtencion() {
         sucursalRepository.findByActivoTrue().stream().findFirst().ifPresent(sucursal -> {
             LocalTime ahora = LocalTime.now();
-            if (!estaEnHorario(sucursal.getHorarioApertura(), sucursal.getHorarioCierre(), ahora)) {
+            if (!sucursal.estaAbierta(ahora)) {
                 throw new IllegalStateException("El local está cerrado. Horario de atención: "
                         + sucursal.getHorarioApertura() + " a " + sucursal.getHorarioCierre());
             }
         });
     }
 
-    // Contempla el caso de un horario que cruza la medianoche (ej. 18:00 a 00:00).
-    private boolean estaEnHorario(LocalTime apertura, LocalTime cierre, LocalTime ahora) {
-        if (apertura.equals(cierre)) {
-            return true; // abierto las 24 horas
-        }
-        if (apertura.isBefore(cierre)) {
-            return !ahora.isBefore(apertura) && ahora.isBefore(cierre);
-        }
-        return !ahora.isBefore(apertura) || ahora.isBefore(cierre);
+    @Override
+    @Transactional(readOnly = true)
+    public com.aluracursos.buensaborbp.dto.EstimacionResponse estimarHora(com.aluracursos.buensaborbp.dto.EstimacionRequest request) {
+        Map<Long, Integer> cantidades = new LinkedHashMap<>();
+        request.items().forEach(i -> cantidades.merge(i.idArticulo(), i.cantidad(), Integer::sum));
+        LocalTime ahora = LocalTime.now();
+        LocalTime hora = tiempoEstimadoPedido.estimar(cantidades, request.tipoEnvio(), ahora);
+        return new com.aluracursos.buensaborbp.dto.EstimacionResponse(hora,
+                (int) java.time.Duration.between(ahora, hora).toMinutes() + (hora.isBefore(ahora) ? 24 * 60 : 0));
     }
 
     @Override

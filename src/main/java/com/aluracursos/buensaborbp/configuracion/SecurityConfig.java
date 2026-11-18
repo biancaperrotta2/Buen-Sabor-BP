@@ -56,7 +56,7 @@ public class SecurityConfig {
                         // Catálogo público: cualquiera puede navegar categorías, productos y unidades de
                         // medida sin loguearse. Los insumos quedan protegidos (son datos internos de costo/stock).
                         // Ciudades/provincias también públicas: se necesitan para completar el formulario de registro.
-                        .requestMatchers(HttpMethod.GET, "/categoria/**", "/articulo-manufacturado/**", "/unidad-medida/**", "/ciudades/**", "/api/provincias/**", "/promociones", "/insumos/vendibles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/categoria/**", "/articulo-manufacturado/**", "/unidad-medida/**", "/ciudades/**", "/api/provincias/**", "/promociones", "/insumos/vendibles", "/local").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)

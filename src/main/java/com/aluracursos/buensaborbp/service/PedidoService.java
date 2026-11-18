@@ -36,6 +36,9 @@ public interface PedidoService extends BaseService<Pedido, Long> {
     void procesarNotificacionPago(Long paymentId);
     com.aluracursos.buensaborbp.dto.VerificacionPagoResponse verificarPago(Long pedidoId);
 
+    // Hora estimada para lo que hay en el carrito, antes de crear el pedido (misma fórmula).
+    com.aluracursos.buensaborbp.dto.EstimacionResponse estimarHora(com.aluracursos.buensaborbp.dto.EstimacionRequest request);
+
     // Crea (o reutiliza, si sigue abierta) la orden en la pasarela cripto y devuelve su link de pago.
     com.aluracursos.buensaborbp.dto.PagoCriptoResponse crearPagoCripto(Long pedidoId);
 

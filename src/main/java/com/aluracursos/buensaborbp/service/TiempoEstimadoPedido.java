@@ -8,13 +8,16 @@ import com.aluracursos.buensaborbp.entity.Enums.Rol;
 import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 import com.aluracursos.buensaborbp.entity.Pedido;
 import com.aluracursos.buensaborbp.entity.Promocion;
+import com.aluracursos.buensaborbp.repository.ArticuloRepository;
 import com.aluracursos.buensaborbp.repository.EmpleadoRepository;
 import com.aluracursos.buensaborbp.repository.PedidoRepository;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 // Fórmula del enunciado (sección 2):
@@ -32,10 +35,23 @@ public class TiempoEstimadoPedido {
 
     private final PedidoRepository pedidoRepository;
     private final EmpleadoRepository empleadoRepository;
+    private final ArticuloRepository articuloRepository;
 
-    public TiempoEstimadoPedido(PedidoRepository pedidoRepository, EmpleadoRepository empleadoRepository) {
+    public TiempoEstimadoPedido(PedidoRepository pedidoRepository, EmpleadoRepository empleadoRepository,
+                                ArticuloRepository articuloRepository) {
         this.pedidoRepository = pedidoRepository;
         this.empleadoRepository = empleadoRepository;
+        this.articuloRepository = articuloRepository;
+    }
+
+    // Para el carrito (todavía no hay pedido): arma uno en memoria con esos artículos y cantidades.
+    // Un id que no existe simplemente no suma.
+    public LocalTime estimar(Map<Long, Integer> cantidadPorArticulo, TipoEnvio tipoEnvio, LocalTime desde) {
+        Pedido borrador = Pedido.builder().tipoEnvio(tipoEnvio).detallePedidos(new ArrayList<>()).build();
+        articuloRepository.findAllById(cantidadPorArticulo.keySet()).forEach(a ->
+                borrador.getDetallePedidos().add(DetallePedido.builder()
+                        .articulo(a).cantidad(cantidadPorArticulo.get(a.getId())).pedido(borrador).build()));
+        return calcular(borrador, desde);
     }
 
     public LocalTime calcular(Pedido pedido, LocalTime desde) {

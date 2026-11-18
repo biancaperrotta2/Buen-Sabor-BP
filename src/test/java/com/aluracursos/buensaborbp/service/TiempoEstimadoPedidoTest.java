@@ -33,6 +33,7 @@ class TiempoEstimadoPedidoTest {
 
     @Mock private PedidoRepository pedidoRepository;
     @Mock private EmpleadoRepository empleadoRepository;
+    @Mock private com.aluracursos.buensaborbp.repository.ArticuloRepository articuloRepository;
 
     private TiempoEstimadoPedido tiempo;
 
@@ -45,7 +46,7 @@ class TiempoEstimadoPedidoTest {
 
     @BeforeEach
     void setUp() {
-        tiempo = new TiempoEstimadoPedido(pedidoRepository, empleadoRepository);
+        tiempo = new TiempoEstimadoPedido(pedidoRepository, empleadoRepository, articuloRepository);
     }
 
     private static ArticuloManufacturado plato(String nombre, int minutos) {
@@ -107,5 +108,18 @@ class TiempoEstimadoPedidoTest {
         enCocina(List.of(actual, pedido(6L, TipoEnvio.TAKE_AWAY, hamburguesa, 2)), 0);
 
         assertThat(tiempo.minutosTotales(actual)).isEqualTo(15 + 20);
+    }
+
+    @Test
+    void estimarParaElCarrito_usaLosArticulosYCantidades() {
+        pizza.setId(1L);
+        hamburguesa.setId(2L);
+        when(articuloRepository.findAllById(org.mockito.ArgumentMatchers.anyIterable())).thenReturn(List.of(pizza, hamburguesa));
+        enCocina(List.of(), 1);
+
+        // 2 pizzas (30) + 1 hamburguesa (10) + delivery (10) = 50 min.
+        LocalTime hora = tiempo.estimar(java.util.Map.of(1L, 2, 2L, 1), TipoEnvio.DELIVERY, LocalTime.of(20, 0));
+
+        assertThat(hora).isEqualTo(LocalTime.of(20, 50));
     }
 }

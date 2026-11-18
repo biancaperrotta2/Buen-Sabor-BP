@@ -112,6 +112,14 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.crearPreferenciaPago(id));
     }
 
+    // Hora estimada para el carrito, antes de crear el pedido (figura 20 del enunciado).
+    @PostMapping("/estimacion")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<com.aluracursos.buensaborbp.dto.EstimacionResponse> estimarHora(
+            @Valid @RequestBody com.aluracursos.buensaborbp.dto.EstimacionRequest request) {
+        return ResponseEntity.ok(pedidoService.estimarHora(request));
+    }
+
     // Pago con criptomonedas: crea la orden en CoinGate y devuelve el link a su página de pago.
     @PostMapping("/{id}/pago/cripto")
     @PreAuthorize("hasRole('ADMIN') or @pedidoSecurity.esDelCliente(authentication, #id)")
