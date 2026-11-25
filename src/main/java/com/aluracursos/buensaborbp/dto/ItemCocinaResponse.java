@@ -8,6 +8,8 @@ import java.util.List;
 public record ItemCocinaResponse(
     String nombre,
     Integer cantidad,
+    // Primera foto del artículo (pestaña Productos del diálogo); null si no tiene.
+    String imagenUrl,
     String preparacion,
     List<ItemCocinaResponse> incluye
 ) {}

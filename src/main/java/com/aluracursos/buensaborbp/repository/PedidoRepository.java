@@ -3,6 +3,8 @@ package com.aluracursos.buensaborbp.repository;
 import com.aluracursos.buensaborbp.entity.Enums.Estado;
 import com.aluracursos.buensaborbp.entity.Enums.TipoEnvio;
 import com.aluracursos.buensaborbp.entity.Pedido;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,6 +32,20 @@ public interface PedidoRepository extends BaseRepository<Pedido, Long> {
 
     // Pedidos rechazados cuyo pago de Mercado Pago el cajero todavía tiene que devolver a mano.
     List<Pedido> findByReintegroPendienteTrueOrderByFechaPedidoAsc();
+
+    // Tabla de Órdenes (cajero): filtro opcional por estado + búsqueda por número o cliente.
+    @Query("SELECT p FROM Pedido p LEFT JOIN p.cliente c WHERE (:estado IS NULL OR p.estado = :estado) AND (:busqueda = '' " +
+            "OR CAST(p.id AS string) LIKE CONCAT('%', :busqueda, '%') " +
+            "OR LOWER(c.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%')) " +
+            "OR LOWER(c.apellido) LIKE LOWER(CONCAT('%', :busqueda, '%')))")
+    Page<Pedido> buscarParaOrdenes(@Param("estado") Estado estado, @Param("busqueda") String busqueda, Pageable pageable);
+
+    // Tabla de Cocina: solo esos estados + la misma búsqueda.
+    @Query("SELECT p FROM Pedido p LEFT JOIN p.cliente c WHERE p.estado IN :estados AND (:busqueda = '' " +
+            "OR CAST(p.id AS string) LIKE CONCAT('%', :busqueda, '%') " +
+            "OR LOWER(c.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%')) " +
+            "OR LOWER(c.apellido) LIKE LOWER(CONCAT('%', :busqueda, '%')))")
+    Page<Pedido> buscarEnEstados(@Param("estados") List<Estado> estados, @Param("busqueda") String busqueda, Pageable pageable);
 
     // --- Reportes de administrador ---
     List<Pedido> findByFechaPedidoBetweenAndEstado(LocalDate desde, LocalDate hasta, Estado estado);

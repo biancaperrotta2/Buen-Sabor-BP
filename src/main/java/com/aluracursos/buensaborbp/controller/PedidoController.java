@@ -56,6 +56,35 @@ public class PedidoController {
 
     // --- Caja ---
 
+    // Tabla de Órdenes (figura 32): todas, filtro por estado (vacío = todos), búsqueda, paginado y
+    // orden por columna; por defecto las más nuevas primero.
+    @GetMapping("/gestion")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+    public ResponseEntity<com.aluracursos.buensaborbp.dto.PageResponse<com.aluracursos.buensaborbp.dto.PedidoTablaResponse>> ordenes(
+            @RequestParam(required = false) com.aluracursos.buensaborbp.entity.Enums.Estado estado,
+            @RequestParam(required = false, defaultValue = "") String busqueda,
+            @org.springframework.data.web.PageableDefault(size = 10, sort = {"fechaPedido", "id"},
+                    direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(pedidoService.listarOrdenes(estado, busqueda, pageable));
+    }
+
+    // Tabla de Cocina (figura 36): en proceso y demorados.
+    @GetMapping("/cocina/tabla")
+    @PreAuthorize("hasAnyRole('ADMIN','COCINERO')")
+    public ResponseEntity<com.aluracursos.buensaborbp.dto.PageResponse<com.aluracursos.buensaborbp.dto.PedidoTablaResponse>> cocinaTabla(
+            @RequestParam(required = false, defaultValue = "") String busqueda,
+            @org.springframework.data.web.PageableDefault(size = 10, sort = {"fechaPedido", "id"},
+                    direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(pedidoService.listarCocinaTabla(busqueda, pageable));
+    }
+
+    // Diálogo de una orden (figuras 33 a 38).
+    @GetMapping("/{id}/gestion")
+    @PreAuthorize("hasAnyRole('ADMIN','CAJERO','COCINERO')")
+    public ResponseEntity<com.aluracursos.buensaborbp.dto.PedidoGestionResponse> gestion(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.obtenerGestion(id));
+    }
+
     @GetMapping("/pendientes")
     @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
     public ResponseEntity<List<PedidoCajaResponse>> pendientes() {

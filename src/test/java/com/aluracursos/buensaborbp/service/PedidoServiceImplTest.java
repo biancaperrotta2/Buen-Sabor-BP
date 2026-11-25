@@ -742,4 +742,78 @@ class PedidoServiceImplTest {
             org.mockito.Mockito.verifyNoInteractions(mercadoPagoPagos, coinGatePagos);
         }
     }
+
+    @Nested
+    @DisplayName("Estados por rol e historial (tablas de Órdenes y Cocina)")
+    class EstadosPorRol {
+        private void loguear(com.aluracursos.buensaborbp.entity.Enums.Rol rol, String nombre) {
+            Empleado e = Empleado.builder().nombre(nombre).apellido("Prueba").usuario("u").rol(rol).build();
+            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                    new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(e, null, e.getAuthorities()));
+        }
+
+        @org.junit.jupiter.api.AfterEach
+        void salir() {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        @DisplayName("El cocinero solo puede elegir Demorado o Listo")
+        void cocinero() {
+            Pedido p = pedido(1L, Estado.EN_PROCESO, EstadoPago.PAGADO, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            assertThat(service.estadosPermitidos(p, com.aluracursos.buensaborbp.entity.Enums.Rol.COCINERO))
+                    .containsExactlyInAnyOrder(Estado.DEMORADO, Estado.PREPARADO);
+        }
+
+        @Test
+        @DisplayName("El cajero acepta o rechaza un pendiente, y entrega solo retiros en el local")
+        void cajero() {
+            var cajero = com.aluracursos.buensaborbp.entity.Enums.Rol.CAJERO;
+            Pedido pendiente = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            assertThat(service.estadosPermitidos(pendiente, cajero)).containsExactlyInAnyOrder(Estado.EN_PROCESO, Estado.CANCELADO);
+
+            Pedido listoRetiro = pedido(2L, Estado.PREPARADO, EstadoPago.PAGADO, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            assertThat(service.estadosPermitidos(listoRetiro, cajero)).containsExactly(Estado.ENTREGADO);
+
+            Pedido listoDelivery = pedido(3L, Estado.PREPARADO, EstadoPago.PAGADO, FormaPago.EFECTIVO, TipoEnvio.DELIVERY);
+            assertThat(service.estadosPermitidos(listoDelivery, cajero)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Un cocinero no puede aceptar un pedido aunque la transición exista")
+        void cocineroNoAcepta() {
+            loguear(com.aluracursos.buensaborbp.entity.Enums.Rol.COCINERO, "Coco");
+            Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                    () -> service.cambiarEstado(1L, Estado.EN_PROCESO));
+            assertThat(p.getEstado()).isEqualTo(Estado.PENDIENTE);
+        }
+
+        @Test
+        @DisplayName("Cada cambio de estado queda en el historial con quién lo hizo")
+        void historial() {
+            loguear(com.aluracursos.buensaborbp.entity.Enums.Rol.COCINERO, "Coco");
+            Pedido p = pedido(1L, Estado.EN_PROCESO, EstadoPago.PAGADO, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.cambiarEstado(1L, Estado.PREPARADO);
+
+            assertThat(p.getHistorial()).hasSize(1);
+            assertThat(p.getHistorial().get(0).getEstado()).isEqualTo(Estado.PREPARADO);
+            assertThat(p.getHistorial().get(0).getUsuario()).isEqualTo("Coco Prueba");
+        }
+
+        @Test
+        @DisplayName("Sin usuario (aviso de una pasarela) figura como Sistema")
+        void sistema() {
+            Pedido p = pedido(1L, Estado.PENDIENTE, EstadoPago.PENDIENTE, FormaPago.EFECTIVO, TipoEnvio.TAKE_AWAY);
+            when(pedidoRepository.findById(1L)).thenReturn(Optional.of(p));
+
+            service.cambiarEstado(1L, Estado.CANCELADO);
+
+            assertThat(p.getHistorial().get(0).getUsuario()).isEqualTo("Sistema");
+        }
+    }
 }

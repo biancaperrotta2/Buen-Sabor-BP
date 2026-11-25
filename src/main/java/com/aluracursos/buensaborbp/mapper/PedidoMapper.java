@@ -55,12 +55,16 @@ public interface PedidoMapper {
                 .filter(d -> d.getArticulos() != null)
                 .map(d -> itemCocina(d.getArticulos(), d.getCantidad() * cantidad))
                 .toList();
-            return new ItemCocinaResponse(promocion.getNombre(), cantidad, null, incluye);
+            String imagen = promocion.getImagenesPromocion() == null || promocion.getImagenesPromocion().isEmpty()
+                ? null : promocion.getImagenesPromocion().get(0).getUrlImagen();
+            return new ItemCocinaResponse(promocion.getNombre(), cantidad, imagen, null, incluye);
         }
         String preparacion = articulo instanceof ArticuloManufacturado manufacturado
             && manufacturado.getPreparacion() != null && !manufacturado.getPreparacion().isBlank()
                 ? manufacturado.getPreparacion() : null;
-        return new ItemCocinaResponse(articulo.getNombre(), cantidad, preparacion, List.of());
+        String imagen = articulo.getImagenes() == null || articulo.getImagenes().isEmpty()
+            ? null : articulo.getImagenes().get(0).getUrlImagen();
+        return new ItemCocinaResponse(articulo.getNombre(), cantidad, imagen, preparacion, List.of());
     }
 
     // Detalle completo

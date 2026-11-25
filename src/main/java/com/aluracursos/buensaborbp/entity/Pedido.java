@@ -70,6 +70,30 @@ public class Pedido {
     private String urlPagoCripto;
     private String tokenPagoCripto;
 
+    // Cuándo quedó pagado (sección Pago del diálogo de Órdenes). Se completa solo al pasar a PAGADO.
+    private java.time.LocalDateTime fechaPago;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("fecha ASC, id ASC")
+    @lombok.EqualsAndHashCode.Exclude
+    @lombok.ToString.Exclude
+    private List<HistorialEstadoPedido> historial = new ArrayList<>();
+
+    public void registrarEstado(Estado estadoNuevo, String usuario) {
+        historial.add(HistorialEstadoPedido.builder()
+                .pedido(this).estado(estadoNuevo).fecha(java.time.LocalDateTime.now()).usuario(usuario).build());
+    }
+
+    // Cubre todos los caminos que marcan el pago (webhook, verificación, cobro en efectivo, cripto).
+    @PrePersist
+    @PreUpdate
+    void completarFechaPago() {
+        if (estadoPago == EstadoPago.PAGADO && fechaPago == null) {
+            fechaPago = java.time.LocalDateTime.now();
+        }
+    }
+
     // Se rechazó un pedido cobrado por Mercado Pago y MP no aceptó el reintegro automático: el
     // cajero tiene que devolverlo desde el panel de MP. Sigue PAGADO hasta que se devuelva.
     @Builder.Default

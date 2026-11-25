@@ -18,6 +18,16 @@ public interface PedidoService extends BaseService<Pedido, Long> {
 
     PedidoFullResponse rechazar(Long id, String motivo, boolean reintegroManual);
 
+    // Tabla de Órdenes (cajero/admin) y de Cocina, con búsqueda + paginado + orden.
+    com.aluracursos.buensaborbp.dto.PageResponse<com.aluracursos.buensaborbp.dto.PedidoTablaResponse> listarOrdenes(
+            Estado estado, String busqueda, org.springframework.data.domain.Pageable pageable);
+
+    com.aluracursos.buensaborbp.dto.PageResponse<com.aluracursos.buensaborbp.dto.PedidoTablaResponse> listarCocinaTabla(
+            String busqueda, org.springframework.data.domain.Pageable pageable);
+
+    // Diálogo de una orden (Detalles + Productos), con los estados que puede elegir quien lo pide.
+    com.aluracursos.buensaborbp.dto.PedidoGestionResponse obtenerGestion(Long id);
+
     // Rechazados con el reintegro de Mercado Pago pendiente (se devuelve desde el panel de MP).
     List<PedidoCajaResponse> listarReintegrosPendientes();
 

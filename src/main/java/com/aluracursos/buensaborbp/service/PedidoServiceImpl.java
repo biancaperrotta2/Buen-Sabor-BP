@@ -9,6 +9,14 @@ import com.aluracursos.buensaborbp.dto.PedidoFullResponse;
 import com.aluracursos.buensaborbp.dto.PedidoRequest;
 import com.aluracursos.buensaborbp.dto.PreferenciaPagoResponse;
 import com.aluracursos.buensaborbp.dto.PagoCriptoResponse;
+import com.aluracursos.buensaborbp.dto.PageResponse;
+import com.aluracursos.buensaborbp.dto.PedidoGestionResponse;
+import com.aluracursos.buensaborbp.dto.PedidoTablaResponse;
+import com.aluracursos.buensaborbp.entity.Usuario;
+import com.aluracursos.buensaborbp.entity.Enums.Rol;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.aluracursos.buensaborbp.entity.Carrito;
 import com.aluracursos.buensaborbp.entity.DetalleMercadoPago;
 import com.aluracursos.buensaborbp.entity.Empleado;
@@ -197,6 +205,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         // factura queda sin "Datos de la empresa" porque Factura los obtiene vía
         // pedido.sucursal.empresa.
         sucursalRepository.findByActivoTrue().stream().findFirst().ifPresent(pedido::setSucursal);
+        pedido.registrarEstado(Estado.PENDIENTE, nombreDe(cliente));
 
         // 5. Copiar los ítems del carrito al pedido, congelando el precio actual del
         // artículo en el subtotal (a diferencia del carrito, el pedido no debe cambiar
@@ -275,6 +284,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
 
         Estado estadoAnterior = pedido.getEstado();
         validarTransicion(estadoAnterior, nuevoEstado);
+        validarPermisoDeRol(pedido, nuevoEstado);
 
         if (nuevoEstado == Estado.ENTREGADO && pedido.getTipoEnvio() == TipoEnvio.DELIVERY) {
             throw new IllegalStateException(
@@ -356,6 +366,136 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         pedido.setReintegroPendiente(false);
         pedido.setEstadoPago(EstadoPago.REINTEGRADO);
         return pedidoMapper.toFullResponse(pedidoRepository.save(pedido));
+    }
+
+    // ================== TABLAS Y DIÁLOGO DE ÓRDENES / COCINA ================== //
+
+    private static final String SISTEMA = "Sistema";
+    private static final List<Estado> ESTADOS_COCINA = List.of(Estado.EN_PROCESO, Estado.DEMORADO);
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<PedidoTablaResponse> listarOrdenes(Estado estado, String busqueda, Pageable pageable) {
+        String filtro = busqueda != null ? busqueda.trim() : "";
+        return PageResponse.de(pedidoRepository.buscarParaOrdenes(estado, filtro, pageable), this::aFila);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<PedidoTablaResponse> listarCocinaTabla(String busqueda, Pageable pageable) {
+        String filtro = busqueda != null ? busqueda.trim() : "";
+        return PageResponse.de(pedidoRepository.buscarEnEstados(ESTADOS_COCINA, filtro, pageable), this::aFila);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PedidoGestionResponse obtenerGestion(Long id) {
+        Pedido p = pedidoRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Pedido no encontrado"));
+        Rol rol = rolActual();
+        if (rol == Rol.COCINERO && !ESTADOS_COCINA.contains(p.getEstado())) {
+            throw new org.springframework.security.access.AccessDeniedException("El pedido #" + id + " no está en cocina");
+        }
+
+        var cliente = p.getCliente() == null ? null : new PedidoGestionResponse.Cliente(
+            nombreDe(p.getCliente()), p.getCliente().getEmail(), p.getCliente().getTelefono());
+        var repartidor = p.getRepartidor() == null ? null : new PedidoGestionResponse.Repartidor(
+            nombreDe(p.getRepartidor()), p.getRepartidor().getTelefono());
+        var historial = p.getHistorial().stream()
+            .map(h -> new PedidoGestionResponse.CambioEstado(h.getEstado(), h.getFecha(), h.getUsuario()))
+            .toList();
+
+        String direccion = null;
+        if (p.getTipoEnvio() == TipoEnvio.DELIVERY) {
+            direccion = p.getDomicilio() != null && p.getDomicilio().getCiudad() != null
+                ? p.getDomicilioSnapshot() + ", " + p.getDomicilio().getCiudad().getNombre()
+                : p.getDomicilioSnapshot();
+        }
+
+        return new PedidoGestionResponse(
+            p.getId(), p.getFechaPedido(), p.getHoraEstimadaFinalizacion(), p.getEstado(), p.getEstadoPago(),
+            p.getFormaPago(), p.getTipoEnvio(), p.getTotal(), p.getGastosEnvio(), p.getDescuento(), direccion,
+            cliente, repartidor, historial, datosDePago(p), p.getAclaraciones(),
+            pedidoMapper.toItemsCocina(p.getDetallePedidos()),
+            p.getFactura() != null ? p.getFactura().getId() : null,
+            p.getMotivoCancelacion(), p.getReintegroPendiente(),
+            List.copyOf(estadosPermitidos(p, rol)));
+    }
+
+    private PedidoTablaResponse aFila(Pedido p) {
+        return new PedidoTablaResponse(p.getId(), p.getFechaPedido(), p.getHoraEstimadaFinalizacion(),
+            p.getCliente() != null ? nombreDe(p.getCliente()) : null, p.getTipoEnvio(), p.getEstado(),
+            p.getEstadoPago(), p.getFormaPago(), p.getTotal());
+    }
+
+    private PedidoGestionResponse.Pago datosDePago(Pedido p) {
+        String transaccion = switch (p.getFormaPago()) {
+            case MERCADO_PAGO -> p.getDetalleMercadoPago() != null && p.getDetalleMercadoPago().getId_Pago() != null
+                ? p.getDetalleMercadoPago().getId_Pago().toString() : null;
+            case CRIPTO -> p.getIdOrdenCripto() != null ? "Orden cripto " + p.getIdOrdenCripto() : null;
+            default -> null;
+        };
+        String metodo = switch (p.getFormaPago()) {
+            case MERCADO_PAGO -> p.getDetalleMercadoPago() != null && p.getDetalleMercadoPago().getTipoPago() != null
+                ? "Mercado Pago (" + p.getDetalleMercadoPago().getTipoPago() + ")" : "Mercado Pago";
+            case CRIPTO -> "Criptomonedas";
+            default -> "Efectivo";
+        };
+        return new PedidoGestionResponse.Pago(transaccion, metodo, p.getTotal(), p.getFechaPago());
+    }
+
+    // Estados a los que quien pregunta puede pasar el pedido (selector del diálogo):
+    // cocinero solo Demorado/Listo (enunciado); cajero acepta, rechaza (con motivo) y entrega en el
+    // mostrador; un delivery solo lo entrega el repartidor. El admin puede todo lo válido.
+    java.util.Set<Estado> estadosPermitidos(Pedido pedido, Rol rol) {
+        java.util.Set<Estado> validos = new java.util.LinkedHashSet<>(TRANSICIONES_VALIDAS.getOrDefault(pedido.getEstado(), Set.of()));
+        if (pedido.getTipoEnvio() == TipoEnvio.DELIVERY) {
+            validos.remove(Estado.EN_CAMINO);
+            validos.remove(Estado.ENTREGADO);
+        }
+        if (rol == null || rol == Rol.ADMIN) {
+            return validos;
+        }
+        java.util.Set<Estado> delRol = switch (rol) {
+            case COCINERO -> Set.of(Estado.DEMORADO, Estado.PREPARADO);
+            case CAJERO -> pedido.getEstado() == Estado.PENDIENTE
+                ? Set.of(Estado.EN_PROCESO, Estado.CANCELADO)
+                : Set.of(Estado.ENTREGADO);
+            default -> Set.of();
+        };
+        validos.retainAll(delRol);
+        return validos;
+    }
+
+    private void validarPermisoDeRol(Pedido pedido, Estado nuevoEstado) {
+        Rol rol = rolActual();
+        if (rol == null || rol == Rol.ADMIN) {
+            return; // llamadas internas (sin usuario) o admin
+        }
+        if (!estadosPermitidos(pedido, rol).contains(nuevoEstado)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                "Con el rol " + rol + " no podés pasar el pedido a " + nuevoEstado);
+        }
+    }
+
+    private static Usuario usuarioAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getPrincipal() instanceof Usuario u ? u : null;
+    }
+
+    private static Rol rolActual() {
+        Usuario u = usuarioAutenticado();
+        return u != null ? u.getRol() : null;
+    }
+
+    private static String usuarioActual() {
+        Usuario u = usuarioAutenticado();
+        return u != null ? nombreDe(u) : SISTEMA;
+    }
+
+    private static String nombreDe(Usuario u) {
+        String nombre = ((u.getNombre() != null ? u.getNombre() : "") + " " + (u.getApellido() != null ? u.getApellido() : "")).trim();
+        return nombre.isEmpty() ? u.getUsuario() : nombre;
     }
 
     // ============ PAGO CON CRIPTOMONEDAS (pasarela simulada o CoinGate) ============ //
@@ -470,7 +610,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         if ((nuevo == EstadoPago.RECHAZADO || nuevo == EstadoPago.REINTEGRADO)
                 && pedido.getEstado() != Estado.CANCELADO
                 && pedido.getEstado() != Estado.ENTREGADO) {
-            aplicarCambioEstado(pedido, Estado.CANCELADO);
+            aplicarCambioEstado(pedido, Estado.CANCELADO, SISTEMA);
         }
         pedidoRepository.save(pedido);
     }
@@ -517,7 +657,14 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
     // Efectos de negocio de cambiar el estado (stock, facturación), compartidos entre el
     // flujo genérico (cambiarEstado) y el flujo de repartidor (tomarPedido/marcarEntregado).
     private void aplicarCambioEstado(Pedido pedido, Estado nuevoEstado) {
+        aplicarCambioEstado(pedido, nuevoEstado, usuarioActual());
+    }
+
+    private void aplicarCambioEstado(Pedido pedido, Estado nuevoEstado, String autor) {
         Estado estadoAnterior = pedido.getEstado();
+        if (estadoAnterior != nuevoEstado) {
+            pedido.registrarEstado(nuevoEstado, autor);
+        }
 
         if (nuevoEstado == Estado.EN_PROCESO && estadoAnterior == Estado.PENDIENTE) {
             pedido.confirmarStock();
@@ -835,7 +982,7 @@ public class PedidoServiceImpl extends BaseServiceImpl<Pedido, Long> implements 
         if ((pedido.getEstadoPago() == EstadoPago.RECHAZADO || pedido.getEstadoPago() == EstadoPago.REINTEGRADO)
                 && pedido.getEstado() != Estado.CANCELADO
                 && pedido.getEstado() != Estado.ENTREGADO) {
-            aplicarCambioEstado(pedido, Estado.CANCELADO);
+            aplicarCambioEstado(pedido, Estado.CANCELADO, SISTEMA);
         }
 
         pedidoRepository.save(pedido);
