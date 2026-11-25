@@ -183,6 +183,7 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
         // Fotos al final: sincronizar puede borrar archivos de Cloudinary (irreversible), así que
         // va después de todas las validaciones que pueden rechazar el guardado.
         imagenesArticulo.sincronizar(insumo, request.imagenes());
+        insumo.marcarModificado();
         return articuloInsumoMapper.toFullResponse(articuloInsumoRepository.save(insumo));
     }
 
@@ -223,6 +224,7 @@ public class ArticuloInsumoServiceImpl extends BaseServiceImpl<ArticuloInsumo, L
         }
 
         imagenesArticulo.sincronizar(existing, request.imagenes());
+        existing.marcarModificado();
         ArticuloInsumo guardado = articuloInsumoRepository.save(existing);
         recalculoCostoProductos.recalcularProductosQueUsan(guardado.getId());
         return articuloInsumoMapper.toFullResponse(guardado);

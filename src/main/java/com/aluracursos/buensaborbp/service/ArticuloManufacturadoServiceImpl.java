@@ -200,6 +200,7 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
         // Fotos al final: sincronizar puede borrar archivos de Cloudinary (irreversible), así que
         // va después de todo lo que puede rechazar el guardado (categoría, costo, precio).
         imagenesArticulo.sincronizar(manufacturado, manufacturadoRequest.imagenes());
+        manufacturado.marcarModificado();
         ArticuloManufacturado saved = manufacturadoRepository.save(manufacturado);
         return manufacturadoMapper.toFullResponse(saved);
     }
@@ -295,6 +296,7 @@ public class ArticuloManufacturadoServiceImpl extends BaseServiceImpl<ArticuloMa
         aplicarPrecioYPreparacion(existing, request);
 
         imagenesArticulo.sincronizar(existing, request.imagenes());
+        existing.marcarModificado();
         ArticuloManufacturado saved = manufacturadoRepository.save(existing);
         // Un semielaborado es ingrediente de otros productos: su costo nuevo tiene que llegarles.
         if (Boolean.TRUE.equals(saved.getEsSemielaborado())) {

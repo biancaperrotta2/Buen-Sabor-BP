@@ -26,6 +26,7 @@ public interface ArticuloManufacturadoMapper {
     @Mapping(target = "ganancia", expression = "java(entity.getPrecioVenta() != null && entity.getPrecioCosto() != null ? entity.getPrecioVenta().subtract(entity.getPrecioCosto()) : null)")
     @Mapping(target = "unidadMedida", expression = "java(entity.getUnidadMedidaEnum() == null ? null : entity.getUnidadMedidaEnum().getDenominacion())")
     @Mapping(target = "unidadAbreviatura", expression = "java(entity.getUnidadMedidaEnum() == null ? null : entity.getUnidadMedidaEnum().getAbreviatura())")
+    @Mapping(target = "disponible", expression = "java(entity.hayStockPara(1))")
     ArticuloManufacturadoFullResponse toFullResponse(ArticuloManufacturado entity);
 
     @Mapping(target = "nombre", source = "denominacion")

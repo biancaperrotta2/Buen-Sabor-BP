@@ -22,7 +22,10 @@ public record ArticuloManufacturadoFullResponse(
         // Para semielaborados (detalle y formulario): su unidad (Kilos/Litros/Unidad) y si está activo.
         String unidadMedida,
         String unidadAbreviatura,
-        Boolean activo
+        Boolean activo,
+        // Diálogo de detalle (figura 53): "Stock suficiente" o "Sin stock" y la última modificación.
+        Boolean disponible,
+        java.time.LocalDateTime fechaModificacion
 ) {
 }
 

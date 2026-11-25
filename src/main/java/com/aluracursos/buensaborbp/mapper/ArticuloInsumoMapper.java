@@ -38,6 +38,7 @@ public interface ArticuloInsumoMapper {
     @Mapping(target = "stockMinimo", expression = "java(entity.getStockMinimo() == null ? null : entity.convertirDesdeCantidadBase(entity.getStockMinimo()))")
     @Mapping(target = "stockMaximo", expression = "java(entity.getStockMaximo() == null ? null : entity.convertirDesdeCantidadBase(entity.getStockMaximo()))")
     @Mapping(target = "imagenUrl", expression = "java(entity.getImagenes() == null || entity.getImagenes().isEmpty() ? null : entity.getImagenes().get(0).getUrlImagen())")
+    @Mapping(target = "nivelStock", expression = "java(com.aluracursos.buensaborbp.dto.NivelStock.de(entity.getStockActual(), entity.getStockMinimo(), entity.getStockMaximo()))")
     ArticuloInsumoFullResponse toFullResponse(ArticuloInsumo entity);
 
     // Vista pública para el menú del cliente: solo nombre, precio, foto y categoría.

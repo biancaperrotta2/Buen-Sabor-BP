@@ -16,5 +16,8 @@ public record ArticuloInsumoFullResponse(
     Boolean activo,
     CategoriaFullResponse categoria,
     UnidadMedidaResponse unidadMedida,
-    String imagenUrl
+    String imagenUrl,
+    // Diálogo de detalle (figura 66): semáforo de stock y última modificación.
+    NivelStock nivelStock,
+    java.time.LocalDateTime fechaModificacion
 ) {}

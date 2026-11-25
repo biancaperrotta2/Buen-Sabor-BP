@@ -101,6 +101,15 @@ public abstract class Articulo {
 
     private Float margen;
 
+    // "Última modificación" del diálogo de detalle (figuras 53 y 66): cuándo lo creó o editó alguien
+    // desde el admin. No cambia con las ventas (el stock se mueve solo). Los artículos que no se
+    // tocaron desde el 2026-11-24 la tienen vacía.
+    private java.time.LocalDateTime fechaModificacion;
+
+    public void marcarModificado() {
+        fechaModificacion = java.time.LocalDateTime.now();
+    }
+
     public void activar() {
         this.activo = true;
         this.esVendible = true;
