@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoBaseResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoFullResponse;
 import com.aluracursos.buensaborbp.dto.ArticuloInsumoRequest;
+import com.aluracursos.buensaborbp.dto.ExistenciaInsumoRequest;
+import com.aluracursos.buensaborbp.dto.ExistenciaInsumoResponse;
+import com.aluracursos.buensaborbp.service.ExistenciaInsumoService;
 import com.aluracursos.buensaborbp.dto.PageResponse;
 import com.aluracursos.buensaborbp.dto.UsoInsumoResponse;
 import com.aluracursos.buensaborbp.dto.InsumoMenuResponse;
@@ -33,6 +36,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public class ArticuloInsumoController {
 
     private final ArticuloInsumoServiceImpl servicio;
+    private final ExistenciaInsumoService existenciaService;
 
     //GET - Lista todos los insumos, con búsqueda + paginado + orden para la tabla de admin
     // El cocinero también la usa: para elegir los insumos de la receta de un semielaborado.
@@ -94,6 +98,31 @@ public class ArticuloInsumoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarInsumo(@PathVariable Long id) {
         servicio.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Existencias (compras) de un insumo: historias #27 y #28, figuras 66 y 67. Solo ADMIN. ---
+
+    @GetMapping("/{id}/existencias")
+    public ResponseEntity<List<ExistenciaInsumoResponse>> listarExistencias(@PathVariable Long id) {
+        return ResponseEntity.ok(existenciaService.listar(id));
+    }
+
+    @PostMapping("/{id}/existencias")
+    public ResponseEntity<ExistenciaInsumoResponse> crearExistencia(
+            @PathVariable Long id, @Valid @RequestBody ExistenciaInsumoRequest request) {
+        return ResponseEntity.ok(existenciaService.crear(id, request));
+    }
+
+    @PutMapping("/existencias/{existenciaId}")
+    public ResponseEntity<ExistenciaInsumoResponse> editarExistencia(
+            @PathVariable Long existenciaId, @Valid @RequestBody ExistenciaInsumoRequest request) {
+        return ResponseEntity.ok(existenciaService.editar(existenciaId, request));
+    }
+
+    @DeleteMapping("/existencias/{existenciaId}")
+    public ResponseEntity<Void> eliminarExistencia(@PathVariable Long existenciaId) {
+        existenciaService.eliminar(existenciaId);
         return ResponseEntity.noContent().build();
     }
 }
